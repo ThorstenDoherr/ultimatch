@@ -8,6 +8,8 @@ STATA
 * Copy the provided examples from the help document into do-files and run them
 * Adjust the templates in the examples to your needs until you you get the hang of it
 ## Version history
+2019.08.29
+* Prevent the usage of the options **limit** and **exp** together with **Coarsened Exact** matching
 2019.08.26 
 * Fixed a bug in Mahalanobis matching that caused partially greedy behavior in non-greedy mode.
 * Included options euclid and mahalamobis to improve flexibility for distance matching.
@@ -16,7 +18,6 @@ STATA
 * Percentile Rank is now considered a general transformation instead of a separate matching method.
 * ultimatch now supports radius matching for the distance-based matching method.
 * Added an additional example.
-
 2019.04.25
 * Initial version.
 ### Author
