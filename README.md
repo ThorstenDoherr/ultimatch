@@ -11,7 +11,7 @@ STATA
 2019.08.29
 * Prevent the usage of the options **limit** and **exp** together with **Coarsened Exact** matching
 
-2019.08.26 
+2019.08.26 (ssc repository version)
 * Fixed a bug in Mahalanobis matching that caused partially greedy behavior in non-greedy mode.
 * Included options euclid and mahalamobis to improve flexibility for distance matching.
 * Included option full as sub-option to copy to enforce treated/counterfactual tuples.
