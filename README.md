@@ -1,13 +1,17 @@
 # ultimatch: counterfactual matching
 **ultimatch** implements various score and distance based matching methods, i.e. Nearest Neighbor, Radius, Coarsened Exact, Percentile Rank and Mahalanobis and Euclidean Distance Matching. It implements an efficient method for distance based matching preventing the inflationary increment of the runtime. Matched observations are marked individually allowing interactions between treated and counterfactuals. Different methods can be combined to improve the results and/or to impose external requirements on the matched. Among other control variables, it creates mandatory weights to provide balanced matching results, preventing distortions caused by skewed counterfactual candidate distributions, e.g. overabundance of candidates with the same score or within  the same coarsened group. It can be used to identify geographic neighborhood relations.
+
 ## Prerequisites
 STATA
+
 ## Getting started
-* Copy ultimatch.ado and ultimatch.sthlp into your ADO file directory (typically c:\ado)
-* Call the help file within STATA: help ultimatch
-* Copy the provided examples from the help document into do-files and run them
-* Adjust the templates in the examples to your needs until you you get the hang of it
+* Copy ultimatch.ado and ultimatch.sthlp into your ADO file directory (typically c:\ado).
+* Call the help file within STATA: help ultimatch.
+* Copy the provided examples from the help document into do-files and run them.
+* Adjust the templates in the examples to your needs until you you get the hang of it.
+
 ## Version history
+
 2019.08.29
 * Prevent the usage of the options **limit** and **exp** together with **Coarsened Exact** matching
 
@@ -22,5 +26,6 @@ STATA
 
 2019.04.25
 * Initial version.
+
 ### Author
 * **Thorsten Doherr** - [ZEW](https://www.zew.de/en/team/tdo/)
