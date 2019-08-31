@@ -1209,7 +1209,7 @@ void _ultimatchradius(real scalar varcnt, string scalar covmat, real scalar cali
 
 void _ultimatchdistance(real scalar varcnt, string scalar covmat, real scalar caliper, real scalar single, real scalar greedy, real scalar copy)
 {	real matrix D, M, C, difvec, miss, neighbor
-	real scalar hood, top, bot, dist, tradius, bradius, radius, nearest, pos, w, reset
+	real scalar hood, top, bot, dist, nearest, pos, w, reset
 	real scalar i, j, match, obs, uselimit, usecmd
 	string scalar limit, cmd, explimit, expcmd, exp, str
 	real scalar comp
@@ -1274,7 +1274,6 @@ void _ultimatchdistance(real scalar varcnt, string scalar covmat, real scalar ca
 		}
 		top = i
 		bot = i
-		radius = 0
 		nearest = .
 		hood = 0
 		while (1)
@@ -1282,15 +1281,16 @@ void _ultimatchdistance(real scalar varcnt, string scalar covmat, real scalar ca
 			{	top--
 				if (top < 1)
 				{	top = .
-					tradius = .
 					break
 				}
 				if (D[i,2] != D[top,2])
 				{	top = .
-					tradius = .
 					break
 				}
-				tradius = D[i,1]-D[top,1]
+				if (D[i,1]-D[top,1] > nearest)
+				{	top = .
+					break
+				}
 				if (D[top,3] == 1)
 				{	break
 				}
@@ -1339,15 +1339,16 @@ void _ultimatchdistance(real scalar varcnt, string scalar covmat, real scalar ca
 			{	bot++
 				if (bot > obs)
 				{	bot = .
-					bradius = .
 					break
 				} 			
 				if (D[i,2] != D[bot,2])
 				{	bot = .
-					bradius = .
 					break
 				}
- 				bradius = D[bot,1]-D[i,1]
+				if (D[bot,1]-D[i,1] > nearest)
+				{	bot = .
+					break
+				}
 				if (D[bot,3] == 1)
 				{	break
 				}
@@ -1392,8 +1393,7 @@ void _ultimatchdistance(real scalar varcnt, string scalar covmat, real scalar ca
 				}
 				break
 			}
-			radius = min((tradius,bradius))
-			if ((top != . | bot != .) & nearest >= radius)
+			if (top != . | bot != .)
 			{	continue
 			}
 			if (hood == 0 | nearest > caliper)

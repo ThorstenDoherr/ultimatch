@@ -1,5 +1,5 @@
 {smcl}
-{* 26aug2019}{...}
+{* 31aug2019}{...}
 {hline}
 help for {hi:ultimatch}
 {hline}
@@ -158,15 +158,16 @@ the {hi:_weight} variable may contain a weight different from 1 for a treated ob
 
 {p 0 4}{ul:exp}({it:string}) defines a logical expression that will be evaluated before a potential non-treated observation will be matched. If the 
 expression evaluates to zero, the observation will be ignored. A variable name with a prefix "t." designates the active treated observation to allow 
-for operations between treated and non-treated variables. This option is not supported by {hi:Coarsened Exact} matching.{break}
-{hi:Example:} exp(abs(empl-t.empl) < 20 | min(empl,t.empl)/max(empl,t.empl) >= 0.8){p_end}
+for operations between treated and non-treated variables. This option is {hi:not} supported by {hi:Coarsened Exact} matching.{break}
+{hi:Example 1:} exp(abs(empl-t.empl) < 20 | min(empl,t.empl)/max(empl,t.empl) >= 0.8){break}
+{hi:Example 2:} exp(region != t.region){p_end}
 
 {p 0 4}{ul:l}imit({it:string}) defines a list of variable and rank difference pairs. The rank difference can be omitted for a default value of 5. For
 each value of one of these variables, a rank percentile will be defined. The absolute rank difference between a treated and a potentially matched
 observation has to be lower or equal the specified difference or, if it is omitted, the default value of 5. A rank percentile is defined for the range
 [0,100]. A rank difference of 5 means, that the rank of the value of the matched observation is within a 5% interval around the respective rank of the
 value of the treated observation. This option can be applied, if polynomials or other non-monotonous transformations were used to estimate the
-score. This option should not be confused with {hi:Percentile Rank} matching. This option is not supported by {hi:Coarsened Exact} matching.{break}
+score. This option should not be confused with {hi:Percentile Rank} matching. This option is {hi:not} supported by {hi:Coarsened Exact} matching.{break}
 {hi:Example:} limit(empl 10 sales patentstock 10){p_end}
 
 {p 0 4}{ul:re}port({it:varlist}) [{ul:unm}atched] reports the results of the weighted t-tests for the comparisons of the means of these variables between the treated
@@ -357,12 +358,13 @@ as a second regression on the matched data suggests.{p_end}
 {text}
 
 {title:Update History}
-{p 0 11}{hi:2019.08.26} Fixed a bug in Mahalanobis matching that caused partially greedy behavior in non-greedy mode.{break}
+{p 0 11}{hi:2019.08.31} Fixed a bug in Mahalanobis matching that caused partially greedy behavior in non-greedy mode.{break}
 Included options {cmd:euclid} and {cmd:mahalamobis} to improve flexibility for distance matching.{break}
 Included option {cmd:full} as sub-option to {cmd:copy} to enforce treated/counterfactual tuples.{break}
 Included option {cmd:radius} to explicitly activate radius matching instead of the implicit activation before.{break}
 Percentile Rank is now considered a general transformation instead of a separate matching method.{break}
-ultimatch now supports radius matching for the distance-based matching method.{break}
+{cmd:ultimatch} now supports radius matching for the distance-based matching method.{break}
+Prevent the usage of the options {cmd:limit} and {cmd:exp} for {hi:Coarsened Exact} matching.{break}
 Added an additional example.{p_end}
 
 {p 0 11}{hi:2019.04.25} Initial version.{p_end}
