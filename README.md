@@ -12,8 +12,8 @@ STATA
 
 ## Version history
 
-2019.08.29
-* Prevent the usage of the options **limit** and **exp** together with **Coarsened Exact** matching
+2019.08.31
+* Prevent the usage of the options **limit** and **exp** for **Coarsened Exact** matching.
 
 2019.08.26 (ssc repository version)
 * Fixed a bug in Mahalanobis matching that caused partially greedy behavior in non-greedy mode.
