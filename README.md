@@ -15,7 +15,7 @@ STATA
 2019.08.31
 * Prevent the usage of the options **limit** and **exp** for **Coarsened Exact** matching.
 
-2019.08.26 (ssc repository version)
+2019.08.26
 * Fixed a bug in Mahalanobis matching that caused partially greedy behavior in non-greedy mode.
 * Included options euclid and mahalamobis to improve flexibility for distance matching.
 * Included option full as sub-option to copy to enforce treated/counterfactual tuples.
@@ -24,7 +24,7 @@ STATA
 * ultimatch now supports radius matching for the distance-based matching method.
 * Added an additional example.
 
-2019.04.25
+2019.04.25 (ssc repository version)
 * Initial version.
 
 ### Author
