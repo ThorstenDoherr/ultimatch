@@ -1,5 +1,5 @@
 {smcl}
-{* 31aug2019}{...}
+{* 10sep2019}{...}
 {hline}
 help for {hi:ultimatch}
 {hline}
@@ -71,7 +71,7 @@ e.g. by percentiles.{break}{hi:_distance} is missing for non-matched observation
 the distribution of the treated. In geeneral, the weight of a treated observation is always 1, while the sum of the weights of its counterfactuals 
 also add up to 1. If the option {cmd:copy} is not specified, overlapping counterfactuals accumulate their weights. The weights should always be used 
 for subsequent estimations. If options require to create copies of a treated observation the sum of the weights of the copies add up to 
-1.{break}{hi:_weight} is missing for non-matched observations.{p_end}
+1. These weights can be considered sampling weights ({hi:pweight}). {break}{hi:_weight} is missing for non-matched observations.{p_end}
 
 {p 0 4}{hi:_support}: marks observations with common support. It will be created if option {cmd:support} is specified.{break}
 {hi:_support} is missing for non-matched observations, 1 for observations with common support and 0 for observations without support.{p_end}
@@ -186,8 +186,11 @@ defined in the option {cmd:exp} are not regarded. If {cmd:copy} is specified, th
 addition, there can be intrinsical clustering of the specified units (see option {cmd:unit}), for example if the same unit is drawn for different time
 periods. The row {it:Clustered} in the output designates the number of observations belonging to a cluster. The row {it:Clusters} accomodates the
 number of different clusters (the size of the cluster aggregate). If {cmd:report} variables are specified, the reported standard errors are clustered
-accordingly. The {cmd:unmatched} standard errors are only clustered, if {cmd:unit} is specified. All reported statistics are returned in the matrix
-{hi:r(match)}. Furthermore, the number of computational steps is returned in {hi:r(comp)} to assess the complexity of the matching.{p_end}
+accordingly. The {cmd:unmatched} standard errors are only clustered, if {cmd:unit} is specified.{p_end}
+{p}Additionally, the Standardized Differences in Means ({hi:SDM}) according to {it:Hedge's g} (1981) are reported. An SDM below 0.2 constitutes a 
+"small" difference (Cohen, 1988). In praxis, the effect size should be "well below" that value.{p_end}
+{p}All reported statistics are returned in the matrix {hi:r(match)}. Furthermore, the number of computational steps is returned in {hi:r(comp)} to
+assess the complexity of the matching.{p_end}
 
 {title:Example 1}
 
@@ -358,6 +361,10 @@ as a second regression on the matched data suggests.{p_end}
 {text}
 
 {title:Update History}
+
+{p 0 11}{hi:2019.09.10} Implemented Standardized Differences in Means ({hi:SDM}) as additional similarity measurement.{break}
+Non-Clustered standard errors are now robust.{p_end}
+
 {p 0 11}{hi:2019.08.31} Fixed a bug in Mahalanobis matching that caused partially greedy behavior in non-greedy mode.{break}
 Included options {cmd:euclid} and {cmd:mahalamobis} to improve flexibility for distance matching.{break}
 Included option {cmd:full} as sub-option to {cmd:copy} to enforce treated/counterfactual tuples.{break}
