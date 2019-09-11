@@ -1,5 +1,5 @@
 {smcl}
-{* 10sep2019}{...}
+{* 11sep2019}{...}
 {hline}
 help for {hi:ultimatch}
 {hline}
@@ -188,7 +188,7 @@ periods. The row {it:Clustered} in the output designates the number of observati
 number of different clusters (the size of the cluster aggregate). If {cmd:report} variables are specified, the reported standard errors are clustered
 accordingly. The {cmd:unmatched} standard errors are only clustered, if {cmd:unit} is specified.{p_end}
 {p}Additionally, the Standardized Differences in Means ({hi:SDM}) according to {it:Hedge's g} (1981) are reported. An SDM below 0.2 constitutes a 
-"small" difference (Cohen, 1988). In praxis, the effect size should be "well below" that value.{p_end}
+"small" difference (Cohen, 1988). In praxis, the effect size should be {hi:well below} that value.{p_end}
 {p}All reported statistics are returned in the matrix {hi:r(match)}. Furthermore, the number of computational steps is returned in {hi:r(comp)} to
 assess the complexity of the matching.{p_end}
 
