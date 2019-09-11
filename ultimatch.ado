@@ -516,18 +516,18 @@ program define ultimatch, rclass
 		di as text "{ralign 16:Total} {c |} " as result %14.9g `cell'[1,2]+`cell'[2,2] "  "  %14.9g `cell'[1,1]+`cell'[2,1]
 		di as text "{ralign 16:Without} {c |} " as result %14.9g `cell'[1,2] "  "  %14.9g `cell'[1,1]
 		di as text "{ralign 16:With} {c |} " as result %14.9g `cell'[2,2] "  "  %14.9g `cell'[2,1]
-		matrix `matrix' = (`cell'[1,2]+`cell'[2,2],`cell'[1,1]+`cell'[2,1],.,.,.)
-		matrix `matrix' = `matrix' \ (`cell'[1,2],`cell'[1,1],.,.,.)
-		matrix `matrix' = `matrix' \ (`cell'[2,2],`cell'[2,1],.,.,.)
+		matrix `matrix' = (`cell'[1,2]+`cell'[2,2],`cell'[1,1]+`cell'[2,1],.,.,.,.)
+		matrix `matrix' = `matrix' \ (`cell'[1,2],`cell'[1,1],.,.,.,.)
+		matrix `matrix' = `matrix' \ (`cell'[2,2],`cell'[2,1],.,.,.,.)
 	}
 	else {
 		qui count in 1/`M' if `tr' == 1
 		di as text "{ralign 16:Total} {c |} " as result %14.9g r(N) "  "  %14.9g `M'-r(N)
 		di as text "{ralign 16:Without} {c |} " as result %14.9g 0 "  "  %14.9g 0
 		di as text "{ralign 16:With} {c |} " as result %14.9g r(N) "  "  %14.9g `M'-r(N)
-		matrix `matrix' = (r(N), `M'-r(N),.,.,.)
-		matrix `matrix' = `matrix' \ (0,0,.,.,.)
-		matrix `matrix' = `matrix' \ (r(N), `M'-r(N),.,.,.)
+		matrix `matrix' = (r(N), `M'-r(N),.,.,.,.)
+		matrix `matrix' = `matrix' \ (0,0,.,.,.,.)
+		matrix `matrix' = `matrix' \ (r(N), `M'-r(N),.,.,.,.)
 	}
 	local rownames = "total without with "
 	qui replace `nouse' = 1 if _match == 0 | _match == .
@@ -555,7 +555,7 @@ program define ultimatch, rclass
 	di as text "{hline 17}{c +}{hline 32}
 	matrix `cell' = (`N'-`ntr',`ntr')
 	di as text "{ralign 16:Matched} {c |} " as result %14.9g `cell'[1,1] "  "  %14.9g `cell'[1,2]
-	matrix `matrix' = `matrix' \ (`cell'[1,1],`cell'[1,2],.,.,.)
+	matrix `matrix' = `matrix' \ (`cell'[1,1],`cell'[1,2],.,.,.,.)
 	local rownames = "`rownames' matched"
 	qui gen byte `mark' = 1 in 1/`ntr' if `cluster' == `cluster'[_n-1] | `cluster' == `cluster'[_n+1] 
 	qui replace `mark' = `cluster' == `cluster'[`ntr'-1] in `ntr'
@@ -568,7 +568,7 @@ program define ultimatch, rclass
 	local clutr = r(N)
 	qui drop `mark'
 	di as text "{ralign 16:Clustered} {c |} " as result %14.9g `clutr' "  "  %14.9g `cluc'
-	matrix `matrix' = `matrix' \ (`clutr',`cluc',.,.,.)
+	matrix `matrix' = `matrix' \ (`clutr',`cluc',.,.,.,.)
 	local rownames = "`rownames' clustered"
 	qui count in 1/`ntr' if `cluster' != `cluster'[_n-1]
 	local cluc = r(N)
@@ -578,67 +578,111 @@ program define ultimatch, rclass
 		local clutr = `clutr'+1
 	}
 	di as text "{ralign 16: Clusters} {c |} " as result %14.9g `clutr' "  "  %14.9g `cluc'
-	matrix `matrix' = `matrix' \ (`clutr',`cluc',.,.,.)
+	matrix `matrix' = `matrix' \ (`clutr',`cluc',.,.,.,.)
 	local rownames = "`rownames' clusters"
 	if "`report'" == "" {
 		di as text "{hline 17}{c BT}{hline 32}"
 	}	
 	if "`report'" != "" {
-		di as text "{hline 17}{c +}{hline 32}{c TT}{hline 26}"
+		di as text "{hline 17}{c +}{hline 32}{c TT}{hline 36}"
 		if `unmatched' {
 			if "`unit'" != "" & `clustered' {
-				di as text "{dup 7: }Unmatched {c |}        Treated         Control {c |} CluStdErr        t  p>|t|"
+				di as text "{dup 7: }Unmatched {c |}        Treated         Control {c |} CluStdErr        t  p>|t|       SDM"
 			}
 			else {
-				di as text "{dup 7: }Unmatched {c |}        Treated         Control {c |}    StdErr        t  p>|t|"
+				di as text "{dup 7: }Unmatched {c |}        Treated         Control {c |}    StdErr        t  p>|t|       SDM"
 			}
-			di as text "{hline 17}{c +}{hline 32}{c +}{hline 26}"
+			di as text "{hline 17}{c +}{hline 32}{c +}{hline 36}"
 			foreach v of varlist `report' {
 				if "`unit'" == "" & `clustered' {
 					qui reg `v' `tr' if `base' == 1, vce(cluster `cluster')
 				}
 				else {
-					qui reg `v' `tr' if `base' == 1
+					qui reg `v' `tr' if `base' == 1, robust
 				}
 				matrix `table' = r(table)
+				qui sum `v' if `tr' == 1 & `base' == 1
+				local m1 = r(mean)
+				local s1 = r(sd)
+				local n1 = r(N)
+				qui sum `v' if `tr' == 0 & `base' == 1
+				local m0 = r(mean)
+				local s0 = r(sd)
+				local n0 = r(N)
+				local nx = (`n1'+`n0'-2)
+				local sdm = (`m1'-`m0')/ sqrt(((`n1'-1)*`s1'^2 + (`n0'-1)*`s0'^2)/(`nx'))
+				if `n1'+`n0' <= 40 { // Hedges'g bias correction
+					local sdm = `sdm'*exp(lngamma(`nx'/2))/(sqrt(`nx'/2)*exp(lngamma((`nx'-1)/2)))
+				}
+				else {
+					local sdm = `sdm'*(1-3/(4*(`n1'+`n0')-9))
+				}
 				local tmean = `table'[1,1]+`table'[1,2]
 				local cmean = `table'[1,2]
 				local r = `table'[2,1]
 				local t = `table'[3,1]
 				local p = `table'[4,1]
 				local var = substr("`v'",1,16)
-				di as text "{ralign 16:`var'} {c |} " as result %14.9g `tmean' "  "  %14.9g `cmean' as text " {c |} " as result %9.6g `r' "  " %7.2f `t' "  " %5.3f `p'
-				matrix `matrix' = `matrix' \ (`tmean',`cmean',`r',`t',`p')
+				if abs(`sdm') < 10 {
+					local sdmf = `""  " %8.5f `sdm'"'
+				}
+				else {
+					local sdmf = `""  " %8.5g `sdm'"'
+				}
+				di as text "{ralign 16:`var'} {c |} " as result %14.9g `tmean' "  "  %14.9g `cmean' as text " {c |} " as result %9.6g `r' "  " %7.2f `t' "  " %5.3f `p' `sdmf'
+				matrix `matrix' = `matrix' \ (`tmean',`cmean',`r',`t',`p',`sdm')
 				local rownames = "`rownames' u_`v'"
 			}		
-			di as text "{hline 17}{c +}{hline 32}{c +}{hline 26}"
+			di as text "{hline 17}{c +}{hline 32}{c +}{hline 36}"
 		}
 		if `clustered' {
-			di as text "{dup 9: }Matched {c |}        Treated         Control {c |} CluStdErr        t  p>|t|"
+			di as text "{dup 9: }Matched {c |}        Treated         Control {c |} CluStdErr        t  p>|t|       SDM"
 		}
 		else {
-			di as text "{dup 9: }Matched {c |}        Treated         Control {c |}    StdErr        t  p>|t|"
+			di as text "{dup 9: }Matched {c |}        Treated         Control {c |}    StdErr        t  p>|t|       SDM"
 		}
-		di as text "{hline 17}{c +}{hline 32}{c +}{hline 26}"
+		di as text "{hline 17}{c +}{hline 32}{c +}{hline 36}"
 		foreach v of varlist `report' {
 			if `clustered' {
 				qui reg `v' `tr' [pweight=_weight] in 1/`N', vce(cluster `cluster')
 			}
 			else {
-				qui reg `v' `tr' [pweight=_weight] in 1/`N'
+				qui reg `v' `tr' [pweight=_weight] in 1/`N', robust
 			}
 			matrix `table' = r(table)
+			qui sum `v' [aweight=_weight] in `tre'/`N'
+			local m1 = r(mean)
+			local s1 = r(sd)
+			local n1 = r(sum_w)
+			qui sum `v' [aweight=_weight] in 1/`ntr'
+			local m0 = r(mean)
+			local s0 = r(sd)
+			local n0 = r(sum_w)
+			local nx = (`n1'+`n0'-2)
+			local sdm = (`m1'-`m0')/ sqrt(((`n1'-1)*`s1'^2 + (`n0'-1)*`s0'^2)/(`nx'))
+			if `n1'+`n0' <= 40 {  // Hedges'g bias correction
+				local sdm = `sdm'*exp(lngamma(`nx'/2))/(sqrt(`nx'/2)*exp(lngamma((`nx'-1)/2)))
+			}
+			else {
+				local sdm = `sdm'*(1-3/(4*(`n1'+`n0')-9))
+			}
 			local tmean = `table'[1,1]+`table'[1,2]
 			local cmean = `table'[1,2]
 			local r = `table'[2,1]
 			local t = `table'[3,1]
 			local p = `table'[4,1]
 			local var = substr("`v'",1,16)
-			di as text "{ralign 16:`var'} {c |} " as result %14.9g `tmean' "  "  %14.9g `cmean' as text " {c |} " as result %9.6g `r' "  " %7.2f `t' "  " %5.3f `p'
-			matrix `matrix' = `matrix' \ (`tmean',`cmean',`r',`t',`p')
+			if abs(`sdm') < 10 {
+				local sdmf = `""  " %8.5f `sdm'"'
+			}
+			else {
+				local sdmf = `""  " %8.5g `sdm'"'
+			}
+			di as text "{ralign 16:`var'} {c |} " as result %14.9g `tmean' "  "  %14.9g `cmean' as text " {c |} " as result %9.6g `r' "  " %7.2f `t' "  " %5.3f `p' `sdmf'
+			matrix `matrix' = `matrix' \ (`tmean',`cmean',`r',`t',`p',`sdm')
 			local rownames = "`rownames' m_`v'"
 		}		
-		di as text "{hline 17}{c BT}{hline 32}{c BT}{hline 26}"
+		di as text "{hline 17}{c BT}{hline 32}{c BT}{hline 36}"
 	}
 	matrix rownames `matrix' = `rownames'
 	if "`report'" == "" {
@@ -646,7 +690,7 @@ program define ultimatch, rclass
 		matrix colnames `matrix' = treated control
 	}
 	else {
-		matrix colnames `matrix' = treated control stderr t p
+		matrix colnames `matrix' = treated control stderr t p sdm
 	}
 	return matrix match = `matrix'
 end
@@ -1540,4 +1584,3 @@ real matrix _ultimatchsingle(real matrix neighbor, real scalar between, real sca
 }
 
 end		
-		

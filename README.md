@@ -12,6 +12,10 @@ STATA
 
 ## Version history
 
+2019.09.10
+* Implemented Standardized Differences in Means (**SDM**) as additional similarity measurement.
+* Non-Clustered standard errors are now robust.
+
 2019.08.31
 * Prevent the usage of the options **limit** and **exp** for **Coarsened Exact** matching.
 
