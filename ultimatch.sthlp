@@ -1,5 +1,5 @@
 {smcl}
-{* 11sep2019}{...}
+{* 18sep2019}{...}
 {hline}
 help for {hi:ultimatch}
 {hline}
@@ -26,26 +26,26 @@ distributions like Entropy Balancing.{p_end}
 {p}Besides score based matching {cmd:ultimatch} supports two different kinds of {hi:distance} matching: {hi:Mahalanobis} and {hi:Euclidean} 
 distance. The Mahalanobis distance uses the inverted covariance matrix to normalize the distance vector between two points before calculating the 
 Euclidean distance. Distance matching allows to find the closest neighbor or all neighbors within a radius in terms of the applied distance 
-measurement. Usually, the neighborhood is determined by calculating the distance of a given point (observation) to all other points in the sample. 
+measurement. Usually, the neighborhood is determined by calculating the distance of a given point (observation) to all other points in the sample.
 The runtime of this process increases according to the product of the treated and the non-treated observations. {cmd:ultimatch} applies a heuristic 
-approach that prevents this inflation of the runtime:{break} First, a distance score, Mahalanobis or Eucledian, is created for every observation to 
-a point outside the finite sample distribution of {it:varlist}. By sorting the data by this score, it is guaranteed that observations with the same 
-score are on the surface of a hypersphere centered on the outside point. The dimensions of the sphere are defined by {it:varlist}. Starting from a 
-treated observation, moving along the score axis in both directions increases respectively decreases the radius of the corresponding spherical 
-layer. For every not-treated observation visited, the actual Mahalonbis distance to the treated observation is calculated. All visited observations 
-are confined within the ever-growing leeway between the deviating inner and outer spheres. The moment where the closest recorded distance to a 
-non-treated observation is shorter than the distance of the treated observation to the nearest spherical layer, calculated as difference between the 
-scores, all observations further down or up the score axis will return higher distances. They will always reside on shells that move further away 
-from the selected treated observation.{break}To identify all neighbors within a given radius, the inner sphere is defined by the specified radius
-instead by the respectively closest observation. Every observation encountered within the inner spere belongs to the neighborhood. The neighborhood
-is complete when the surfaces of the three involved spheres cease to intersect.{p_end}
+approach that prevents this inflation of the runtime called {hi:Hypersphere Leeway} algorithm:{break}
+First, a distance score, Mahalanobis or Eucledian, is created for every observation to a point outside the finite sample distribution of {it:varlist}.
+By sorting the data by this score, it is guaranteed that observations with the same score are on the surface of a hypersphere centered on the outside 
+point. The dimensions of the sphere are defined by {it:varlist}. Starting from a treated observation, moving along the score axis in both directions 
+increases respectively decreases the radius of the corresponding spherical layer. For every not-treated observation visited, the actual Mahalonbis 
+distance to the treated observation is calculated. All visited observations are confined within the ever-growing leeway between the deviating inner and 
+outer spheres. The moment where the closest recorded distance to a non-treated observation is shorter than the distance of the treated observation to 
+the nearest spherical layer, calculated as difference between the scores, all observations further down or up the score axis will return higher 
+distances. They will always reside on shells that move further away from the selected treated observation.{break}To identify all neighbors within a
+given radius, the inner sphere is defined by the specified radius instead by the respectively closest observation. Every observation encountered within
+the inner spere belongs to the neighborhood. The neighborhood is complete when the surfaces of the three involved spheres cease to intersect.{p_end}
 
 {p}Score-based matching exploits the fact that with only one dimension, the spheres transform to points along the score axis and the
 closest point is immediately ascertainable. This circumstance allows for more flexible options, extending the neighborhood beyond the nearest
 one.{p_end}
 
 {p}{hi:Percentile Rank} transformation can be applied on the score or the distance variables. A percentile rank is the percentage of distinct 
-values that are equal or lower than it. As opposed to percentiles, variables with the same value always have the same percentile rank eliminating the 
+values that are equal or lower than it. As opposed to percentiles, variables with the same value always have the same percentile rank eliminating the
 arbitrariness of percentiles. The percentile ranks of {it:varlist} are used as a way to normalize the dimensions. The default distance is
 Euclidean, but it can be switched to Mahalanobis. In the case of score-based matching the transformation eliminates the first differenes of
 neighboring scores.{p_end}
@@ -94,8 +94,8 @@ observations.{p_end}
 
 {p 0 4}{ul:ca}liper({it:real}) defines the maximum absolute score difference or distance between a treated and a non-treated observation (default: 
 no limit). It is {hi:not} supported by {hi:Coarsened Exact} matching because due to lack of a score or a distance. Caliper describes the radius in 
-case of {hi:Radius} matching.{break}{hi:Hint:} Because it is difficult to assess the range of the Mahalanobis distance, summarizing the {hi:_distance} variable 
-of the counterfactuals is suggested to either remove outlying counterfactuals manually or to define a caliper for a second run.{p_end}
+case of {hi:Radius} matching.{break}{hi:Hint:} Because it is difficult to assess the range of the Mahalanobis distance, summarizing the {hi:_distance}
+variable of the counterfactuals is suggested to either remove outlying counterfactuals manually or to define a caliper for a second run.{p_end}
 
 {p 0 4}{ul:d}raw({it:integer}) specifies the number of neighbors for every treated observation to be drawn. Neighbors with the same score or 
 distance are considered one draw unless the option {cmd:single} is specified. With this option, it is possible to diminish the burden of the 
@@ -108,7 +108,7 @@ the corresponding treated observation, therefore the term {cmd:exact}. This opti
 specified variables should be ordinal, categorical or binary. If this option is specified without a general {it:varlist} (a score or 
 distance variables), {hi:Coarsened Exact} matching is assumed. In this case, the {hi:_match} variable enumerates the cells containing 
 treated and non-treated observations in no specific order.{break}
-{hi:Hint:} Coarsened Exact matching can also be emulated by using a group variable based on the defined coarsened stratums as a score. In this case, 
+{hi:Hint:} Coarsened Exact matching can also be emulated by using a group variable based on the defined coarsened stratums as a score. In this case,
 missing values can be included. By applying a {cmd:caliper} below 1, e.g. 0.5, the {hi:Neighbor} matching will always draw 
 counterfactuals within the stratum without requiring the {cmd:exact} option. All options of {hi:Neighbor} matching are available including 
 {hi:single} for random assignment of counterfactuals and {cmd:copy} for direct associations with the treated observations (see example section 
@@ -116,7 +116,7 @@ below).{p_end}
 
 {p 0 4}{ul:rad}ius activates radius matching for score-based and distance-based matching.
 
-{p 0 4}{ul:ran}k activates {hi:Percentile Rank} transformation. In case of distance-based matching the Euclidean distance will be used by default. 
+{p 0 4}{ul:ran}k activates {hi:Percentile Rank} transformation. In case of distance-based matching the Euclidean distance will be used by default.
 With the option {cmd:mahalanobis} the distance calculation can be switched to {hi:Mahalanobis} distance.{p_end}
 
 {p 0 4}{ul:eu}clid can be applied to switch to Euclidean distance calculation. This is the default setting in case
@@ -170,9 +170,9 @@ value of the treated observation. This option can be applied, if polynomials or 
 score. This option should not be confused with {hi:Percentile Rank} matching. This option is {hi:not} supported by {hi:Coarsened Exact} matching.{break}
 {hi:Example:} limit(empl 10 sales patentstock 10){p_end}
 
-{p 0 4}{ul:re}port({it:varlist}) [{ul:unm}atched] reports the results of the weighted t-tests for the comparisons of the means of these variables between the treated
-and the control group. In case of copied counterfactuals (see option {cmd:copy}) or external unit specifications (see option {cmd:unit}) the standard
-errors are clustered accordingly. The option {cmd:unmatched} additionally reports the t-tests before the matching.{p_end}
+{p 0 4}{ul:re}port({it:varlist}) [{ul:unm}atched] reports the results of the weighted t-tests for the comparisons of the means of these variables between
+the treated and the control group. In case of copied counterfactuals (see option {cmd:copy}) or external unit specifications (see option {cmd:unit})
+the standard errors are clustered accordingly. The option {cmd:unmatched} additionally reports the t-tests before the matching.{p_end}
 
 {p 0 4}{ul:uni}t({it:varlist}) defines key variables determining a data unit. These units will be used to estimate clustered standard errors for the
 report. If omitted, every observation is considered a unit. {cmd:unit} is useful for panel data, where a unit can be matched in different time
