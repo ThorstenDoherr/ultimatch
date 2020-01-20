@@ -1,5 +1,5 @@
 {smcl}
-{* 18sep2019}{...}
+{* 20jan2020}{...}
 {hline}
 help for {hi:ultimatch}
 {hline}
@@ -29,7 +29,7 @@ Euclidean distance. Distance matching allows to find the closest neighbor or all
 measurement. Usually, the neighborhood is determined by calculating the distance of a given point (observation) to all other points in the sample.
 The runtime of this process increases according to the product of the treated and the non-treated observations. {cmd:ultimatch} applies a heuristic 
 approach that prevents this inflation of the runtime called {hi:Hypersphere Leeway} algorithm:{break}
-First, a distance score, Mahalanobis or Eucledian, is created for every observation to a point outside the finite sample distribution of {it:varlist}.
+First, a distance score, Mahalanobis or Eucledian, is created for every observation to a reference point outside the finite sample distribution of {it:varlist}.
 By sorting the data by this score, it is guaranteed that observations with the same score are on the surface of a hypersphere centered on the outside 
 point. The dimensions of the sphere are defined by {it:varlist}. Starting from a treated observation, moving along the score axis in both directions 
 increases respectively decreases the radius of the corresponding spherical layer. For every not-treated observation visited, the actual Mahalonbis 
@@ -361,6 +361,8 @@ as a second regression on the matched data suggests.{p_end}
 {text}
 
 {title:Update History}
+
+{p 0 11}{hi:2020.01.20} Optimized the calculation of the outside reference point for the hypersphere leeway algorithm.{p_end}
 
 {p 0 11}{hi:2019.09.10} Implemented Standardized Differences in Means ({hi:SDM}) as additional similarity measurement.{break}
 Non-Clustered standard errors are now robust.{p_end}

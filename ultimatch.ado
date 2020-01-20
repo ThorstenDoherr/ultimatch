@@ -1556,8 +1556,7 @@ void _ultimatchdistanceaxis(real scalar obs, real scalar axispos,  real scalar v
 	cov = st_matrix(covmat) 
 	st_view(S=.,(1,obs),(axispos))
 	st_view(M=.,(1,obs),(varpos..varpos+cols(cov)-1)) // distance variables
-	base = colmin(M)
-	base =  base :- 1
+	base = mean(M) - colmax(M)
 	for (i = 1; i <= obs; i++)
 	{	dif = base :- M[i, .]
 		dif = dif * cov * dif'

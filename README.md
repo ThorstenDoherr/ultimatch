@@ -12,6 +12,9 @@ STATA
 
 ## Version history
 
+2020.01.20
+* Optimized the calculation of the outside reference point for the hypersphere leeway algorithm.
+
 2019.09.10
 * Implemented Standardized Differences in Means (**SDM**) as additional similarity measurement.
 * Non-Clustered standard errors are now robust.
