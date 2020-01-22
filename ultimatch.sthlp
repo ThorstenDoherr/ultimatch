@@ -1,5 +1,5 @@
 {smcl}
-{* 20jan2020}{...}
+{* 22jan2020}{...}
 {hline}
 help for {hi:ultimatch}
 {hline}
@@ -9,49 +9,50 @@ help for {hi:ultimatch}
 {p 8 15}{cmd:ultimatch} [{it:varlist}] [{it:if}] [{it:in}], {ul:t}reated({it:var}) [{ul:exa}ct({it:varlist})] [{ul:d}raw(#)] [{ul:ca}liper(#)]
 [{ul:su}pport] [{ul:si}ngle] [{ul:g}reedy] [{ul:b}etween] [{ul:ran}k] [{ul:rad}ius] [{ul:eu}clid] [{ul:m}ahalanobis] [{ul:co}py [{ul:f}ull]]
 [{ul:re}port({it:varlist}) [{ul:unm}atched]] [{ul:uni}t({it:varlist})] [{ul:exp}({it:string})] [{ul:l}imit({it:string})]{p_end}
- 
+
 {title:Description}
 
-{p}{cmd:ultimatch} implements various matching methods. The matching mode depends on the options and parameters specified. If only one variable is 
-specified, it is considered a score, which will be used for neigborhood or radius matching. In most cases this score is a predicted propensity 
-score, but it can be any variable providing a distance relation. If more than one variable is specified, the {hi:Mahalanobis} or {hi:Euclidean} distance 
-will be used to determine the surroundings for every treated observation. Another distance based method is the {hi:Percentile Rank} matching, which is 
-activated by the option {cmd:rank}. Finally, by omitting any variable, {hi:Coarsened Exact} matching is assumed requiring the specification of the grouping 
+{p}{cmd:ultimatch} implements various matching methods. The matching mode depends on the options and parameters specified. If only one variable is
+specified, it is considered a score, which will be used for neigborhood or radius matching. In most cases this score is a predicted propensity
+score, but it can be any variable providing a distance relation. If more than one variable is specified, the {hi:Mahalanobis} or {hi:Euclidean} distance
+will be used to determine the surroundings for every treated observation. Another distance based method is the {hi:Percentile Rank} matching, which is
+activated by the option {cmd:rank}. Finally, by omitting any variable, {hi:Coarsened Exact} matching is assumed requiring the specification of the grouping
 variables in the {cmd:exact} option (see option {cmd:exact} for an alternative method to {hi:Coarsened Exact} matching).{p_end}
 
 {p}From now on, the term "counterfactuals" refers to non-treated observations that are suited to represent a specific treated observation - or a group
 of those in case of {hi:Coarsened Exact} matching - in a control group. {cmd:ultimatch} does not implement methods based on adjusting whole
 distributions like Entropy Balancing.{p_end}
 
-{p}Besides score based matching {cmd:ultimatch} supports two different kinds of {hi:distance} matching: {hi:Mahalanobis} and {hi:Euclidean} 
-distance. The Mahalanobis distance uses the inverted covariance matrix to normalize the distance vector between two points before calculating the 
-Euclidean distance. Distance matching allows to find the closest neighbor or all neighbors within a radius in terms of the applied distance 
+{p}Besides score based matching {cmd:ultimatch} supports two different kinds of {hi:distance} matching: {hi:Mahalanobis} and {hi:Euclidean}
+distance. The Mahalanobis distance uses the inverted covariance matrix to normalize the distance vector between two points before calculating the
+Euclidean distance. Distance matching allows to find the closest neighbor or all neighbors within a radius in terms of the applied distance
 measurement. Usually, the neighborhood is determined by calculating the distance of a given point (observation) to all other points in the sample.
-The runtime of this process increases according to the product of the treated and the non-treated observations. {cmd:ultimatch} applies a heuristic 
+The runtime of this process increases according to the product of the treated and the non-treated observations. {cmd:ultimatch} applies a heuristic
 approach that prevents this inflation of the runtime called {hi:Hypersphere Leeway} algorithm:{break}
-First, a distance score, Mahalanobis or Eucledian, is created for every observation to a reference point outside the finite sample distribution of {it:varlist}.
-By sorting the data by this score, it is guaranteed that observations with the same score are on the surface of a hypersphere centered on the outside 
-point. The dimensions of the sphere are defined by {it:varlist}. Starting from a treated observation, moving along the score axis in both directions 
-increases respectively decreases the radius of the corresponding spherical layer. For every not-treated observation visited, the actual Mahalonbis 
-distance to the treated observation is calculated. All visited observations are confined within the ever-growing leeway between the deviating inner and 
-outer spheres. The moment where the closest recorded distance to a non-treated observation is shorter than the distance of the treated observation to 
-the nearest spherical layer, calculated as difference between the scores, all observations further down or up the score axis will return higher 
-distances. They will always reside on shells that move further away from the selected treated observation.{break}To identify all neighbors within a
-given radius, the inner sphere is defined by the specified radius instead by the respectively closest observation. Every observation encountered within
-the inner spere belongs to the neighborhood. The neighborhood is complete when the surfaces of the three involved spheres cease to intersect.{p_end}
+First, a distance score, Mahalanobis or Eucledian, is created for every observation to a reference point in the outskirts of the finite sample distribution
+of {it:varlist}. It is defined by the median center point plus the vector leading from the 75-percentile point to the 25-percentile point. By sorting the
+data by the score, it is guaranteed that observations with the same score are on the surface of a hypersphere centered on the outside point. The dimensions
+of the sphere are determined by {it:varlist}. Starting from a treated observation, moving along the score axis in both directions increases respectively
+decreases the radius of the corresponding spherical layer. For every not-treated observation visited, the actual Mahalonbis distance to the treated
+observation is calculated. All visited observations are confined within the ever-growing leeway between the deviating inner and outer spheres. The moment
+where the closest recorded distance to a non-treated observation is shorter than the distance of the treated observation to the nearest spherical layer,
+calculated as difference between the scores, all observations further down or up the score axis will return higher distances. They will always reside on
+shells that move further away from the selected treated observation.{break}To identify all neighbors within a given radius, the inner sphere is defined by
+the specified radius instead by the respectively closest observation. Every observation encountered within the inner spere belongs to the neighborhood. The
+neighborhood is complete when the surfaces of the three involved spheres cease to intersect.{p_end}
 
 {p}Score-based matching exploits the fact that with only one dimension, the spheres transform to points along the score axis and the
 closest point is immediately ascertainable. This circumstance allows for more flexible options, extending the neighborhood beyond the nearest
 one.{p_end}
 
-{p}{hi:Percentile Rank} transformation can be applied on the score or the distance variables. A percentile rank is the percentage of distinct 
+{p}{hi:Percentile Rank} transformation can be applied on the score or the distance variables. A percentile rank is the percentage of distinct
 values that are equal or lower than it. As opposed to percentiles, variables with the same value always have the same percentile rank eliminating the
 arbitrariness of percentiles. The percentile ranks of {it:varlist} are used as a way to normalize the dimensions. The default distance is
 Euclidean, but it can be switched to Mahalanobis. In the case of score-based matching the transformation eliminates the first differenes of
 neighboring scores.{p_end}
 
-{p}{cmd:ultimatch} considers non-treated observations with the same score or distance as one draw. It does not arbitrarily pick one of these 
-observations unless the option {cmd:single} is specified. Therefore, it is required to introduce weights (see below) to keep the distributions 
+{p}{cmd:ultimatch} considers non-treated observations with the same score or distance as one draw. It does not arbitrarily pick one of these
+observations unless the option {cmd:single} is specified. Therefore, it is required to introduce weights (see below) to keep the distributions
 balanced between treated and counterfactuals.{p_end}
 
 {p}Depending on the settings, the following variables will be created:{p_end}
@@ -67,18 +68,18 @@ conjunction with {cmd:caliper}.{break}{hi:_match} is missing for non-matched obs
 observation, if {cmd:copy} is specified. It will not be created for {hi:Coarsened Exact} matching. It can be used to remove outlying matches manually,
 e.g. by percentiles.{break}{hi:_distance} is missing for non-matched observations.{p_end}
 
-{p 0 4}{hi:_weight}: contains the weight of the observation after matching. The weights balance the distribution of the counterfactuals according to 
-the distribution of the treated. In geeneral, the weight of a treated observation is always 1, while the sum of the weights of its counterfactuals 
-also add up to 1. If the option {cmd:copy} is not specified, overlapping counterfactuals accumulate their weights. The weights should always be used 
-for subsequent estimations. If options require to create copies of a treated observation the sum of the weights of the copies add up to 
+{p 0 4}{hi:_weight}: contains the weight of the observation after matching. The weights balance the distribution of the counterfactuals according to
+the distribution of the treated. In geeneral, the weight of a treated observation is always 1, while the sum of the weights of its counterfactuals
+also add up to 1. If the option {cmd:copy} is not specified, overlapping counterfactuals accumulate their weights. The weights should always be used
+for subsequent estimations. If options require to create copies of a treated observation the sum of the weights of the copies add up to
 1. These weights can be considered sampling weights ({hi:pweight}). {break}{hi:_weight} is missing for non-matched observations.{p_end}
 
 {p 0 4}{hi:_support}: marks observations with common support. It will be created if option {cmd:support} is specified.{break}
 {hi:_support} is missing for non-matched observations, 1 for observations with common support and 0 for observations without support.{p_end}
 
-{p 0 4}{hi:_copy}: contains a dummy designating observations that were copied (appended to the data) to avoid conflicts between treated observations 
-over a mutual counterfactual. It will only be created if the option {cmd:copy} is specified. Only if option {cmd:full} was specified, treated will be 
-among the copied observations.{break}{hi:_copy} is missing for non-matched observations, 1 for matched and appended and 0 for matched, original 
+{p 0 4}{hi:_copy}: contains a dummy designating observations that were copied (appended to the data) to avoid conflicts between treated observations
+over a mutual counterfactual. It will only be created if the option {cmd:copy} is specified. Only if option {cmd:full} was specified, treated will be
+among the copied observations.{break}{hi:_copy} is missing for non-matched observations, 1 for matched and appended and 0 for matched, original
 observations.{p_end}
 
 {p}{hi:WARNING: ultimatch will change the sort order of the data and, if canceled, the order of the variables.}{p_end}
@@ -92,26 +93,26 @@ observations.{p_end}
 
 {p 0 4}{ul:t}reated({it:var}) specifies a dummy variable marking the treated observations.{p_end}
 
-{p 0 4}{ul:ca}liper({it:real}) defines the maximum absolute score difference or distance between a treated and a non-treated observation (default: 
-no limit). It is {hi:not} supported by {hi:Coarsened Exact} matching because due to lack of a score or a distance. Caliper describes the radius in 
+{p 0 4}{ul:ca}liper({it:real}) defines the maximum absolute score difference or distance between a treated and a non-treated observation (default:
+no limit). It is {hi:not} supported by {hi:Coarsened Exact} matching because due to lack of a score or a distance. Caliper describes the radius in
 case of {hi:Radius} matching.{break}{hi:Hint:} Because it is difficult to assess the range of the Mahalanobis distance, summarizing the {hi:_distance}
 variable of the counterfactuals is suggested to either remove outlying counterfactuals manually or to define a caliper for a second run.{p_end}
 
-{p 0 4}{ul:d}raw({it:integer}) specifies the number of neighbors for every treated observation to be drawn. Neighbors with the same score or 
-distance are considered one draw unless the option {cmd:single} is specified. With this option, it is possible to diminish the burden of the 
-"nearest neighbor" by including a larger neighborhood at the expense of similarity. It is {hi:not} supported by {hi:Coarsened Exact} matching 
+{p 0 4}{ul:d}raw({it:integer}) specifies the number of neighbors for every treated observation to be drawn. Neighbors with the same score or
+distance are considered one draw unless the option {cmd:single} is specified. With this option, it is possible to diminish the burden of the
+"nearest neighbor" by including a larger neighborhood at the expense of similarity. It is {hi:not} supported by {hi:Coarsened Exact} matching
 because it always draws all observations in a cell defined by the option {cmd:exact}. It is also {hi:not} supported by distance-based matching
 because the algorithm can only identify the nearest neighbor.{p_end}
 
-{p 0 4}{ul:exa}ct({it:varlist}) specifies a group of variables defining cells (stratums). The counterfactuals must be in the same cell as 
-the corresponding treated observation, therefore the term {cmd:exact}. This option can be combined with any matching method. The 
-specified variables should be ordinal, categorical or binary. If this option is specified without a general {it:varlist} (a score or 
-distance variables), {hi:Coarsened Exact} matching is assumed. In this case, the {hi:_match} variable enumerates the cells containing 
+{p 0 4}{ul:exa}ct({it:varlist}) specifies a group of variables defining cells (stratums). The counterfactuals must be in the same cell as
+the corresponding treated observation, therefore the term {cmd:exact}. This option can be combined with any matching method. The
+specified variables should be ordinal, categorical or binary. If this option is specified without a general {it:varlist} (a score or
+distance variables), {hi:Coarsened Exact} matching is assumed. In this case, the {hi:_match} variable enumerates the cells containing
 treated and non-treated observations in no specific order.{break}
 {hi:Hint:} Coarsened Exact matching can also be emulated by using a group variable based on the defined coarsened stratums as a score. In this case,
-missing values can be included. By applying a {cmd:caliper} below 1, e.g. 0.5, the {hi:Neighbor} matching will always draw 
-counterfactuals within the stratum without requiring the {cmd:exact} option. All options of {hi:Neighbor} matching are available including 
-{hi:single} for random assignment of counterfactuals and {cmd:copy} for direct associations with the treated observations (see example section 
+missing values can be included. By applying a {cmd:caliper} below 1, e.g. 0.5, the {hi:Neighbor} matching will always draw
+counterfactuals within the stratum without requiring the {cmd:exact} option. All options of {hi:Neighbor} matching are available including
+{hi:single} for random assignment of counterfactuals and {cmd:copy} for direct associations with the treated observations (see example section
 below).{p_end}
 
 {p 0 4}{ul:rad}ius activates radius matching for score-based and distance-based matching.
@@ -122,7 +123,7 @@ With the option {cmd:mahalanobis} the distance calculation can be switched to {h
 {p 0 4}{ul:eu}clid can be applied to switch to Euclidean distance calculation. This is the default setting in case
 of {hi:Percentile Rank} transformation. This option is {hi:not} supported by {hi:Coarsened Exact} and score-based matching.{p_end}
 
-{p 0 4}{ul:m}ahalanobis can be applied to switch to Mahalanobis distance calculation. This is the default setting for distance-based matching. This 
+{p 0 4}{ul:m}ahalanobis can be applied to switch to Mahalanobis distance calculation. This is the default setting for distance-based matching. This
 option is {hi:not} supported by {hi:Coarsened Exact} and score-based matching.{p_end}
 
 {p 0 4}{ul:b}etween searches for higher and lower ranked neighbours independently. The draw option
@@ -134,30 +135,30 @@ observations. This may initiate a displacement cascade until all treated observa
 claim given the competition. It is strongly advised to apply {cmd:greedy} together with a reasonable {cmd:caliper}. It is {hi:not} supported by
 {hi:Coarsened Exact} and {hi:Radius} matching.{p_end}
 
-{p 0 4}{ul:si}ngle dismisses the default behaviour of considering all observations with the same score or distance as one observation regarding the 
-draw limit. Every observation will be counted towards the draw limit. The counterfactuals are randomly drawn within in groups of equal scores or 
+{p 0 4}{ul:si}ngle dismisses the default behaviour of considering all observations with the same score or distance as one observation regarding the
+draw limit. Every observation will be counted towards the draw limit. The counterfactuals are randomly drawn within in groups of equal scores or
 distances. It is {hi:not} supported by {hi:Radius} and {hi:Coarsened Exact} matching as they are not restricted to a specific number of
 counterfactuals.{p_end}
 
-{p 0 4}{ul:su}pport guarantees that there is overlap between the treated and non-treated population regarding the score, the so called {it:common 
-support}. This option enforces the creation of the {hi:_support} variable marking observations with common support with 1. The score has to be in 
-the confines defined by the minimum of the maximum scores and the maximum of the minimum scores of treated vs. non-treated observations. In the case 
-of distance-based matching, the first variable is considered to contain the score to allow the inclusion of a propensity score. It is {hi:not} 
+{p 0 4}{ul:su}pport guarantees that there is overlap between the treated and non-treated population regarding the score, the so called {it:common
+support}. This option enforces the creation of the {hi:_support} variable marking observations with common support with 1. The score has to be in
+the confines defined by the minimum of the maximum scores and the maximum of the minimum scores of treated vs. non-treated observations. In the case
+of distance-based matching, the first variable is considered to contain the score to allow the inclusion of a propensity score. It is {hi:not}
 supported by {hi:Coarsened Exact} matching.{p_end}
 
-{p 0 4}{ul:co}py [{ul:f}ull] appends copies of counterfactuals that are drawn more than one time by different treated observations. It facilitates 
-direct associations of treated observations with their counterfactuals by the {hi:_match} identifier enabling interactions between a treated and 
-non-treated observation, e.g. sample splits that do not separate treated and counterfactuals or the calculation of ratios. With {cmd:copy}, every 
-group of observations sharing the same {hi:_match} identifier contains one treated and at least one counterfactual. This is not neccessarily the 
-case, if the option is omitted. It is {hi:not} directly supported by {hi:Coarsened Exact} matching because it matches groups not individuals. The 
-{cmd:full} sub-option forces tuples comprising of exactly one treated and one counterfactual represented by an unique {hi:_match} ID. If a treated 
-observation has more than one counterfactual, a copy of the treated will be created for every additional counterfactual. This is the only case where 
-the {hi:_weight} variable may contain a weight different from 1 for a treated observation to preserve the original distribution of the treated. The 
-{cmd:full} option allows even more control over the interactions at the expense of an inflated dataset. It is also useful for educational purposes 
+{p 0 4}{ul:co}py [{ul:f}ull] appends copies of counterfactuals that are drawn more than one time by different treated observations. It facilitates
+direct associations of treated observations with their counterfactuals by the {hi:_match} identifier enabling interactions between a treated and
+non-treated observation, e.g. sample splits that do not separate treated and counterfactuals or the calculation of ratios. With {cmd:copy}, every
+group of observations sharing the same {hi:_match} identifier contains one treated and at least one counterfactual. This is not neccessarily the
+case, if the option is omitted. It is {hi:not} directly supported by {hi:Coarsened Exact} matching because it matches groups not individuals. The
+{cmd:full} sub-option forces tuples comprising of exactly one treated and one counterfactual represented by an unique {hi:_match} ID. If a treated
+observation has more than one counterfactual, a copy of the treated will be created for every additional counterfactual. This is the only case where
+the {hi:_weight} variable may contain a weight different from 1 for a treated observation to preserve the original distribution of the treated. The
+{cmd:full} option allows even more control over the interactions at the expense of an inflated dataset. It is also useful for educational purposes
 (see example 2).{p_end}
 
-{p 0 4}{ul:exp}({it:string}) defines a logical expression that will be evaluated before a potential non-treated observation will be matched. If the 
-expression evaluates to zero, the observation will be ignored. A variable name with a prefix "t." designates the active treated observation to allow 
+{p 0 4}{ul:exp}({it:string}) defines a logical expression that will be evaluated before a potential non-treated observation will be matched. If the
+expression evaluates to zero, the observation will be ignored. A variable name with a prefix "t." designates the active treated observation to allow
 for operations between treated and non-treated variables. This option is {hi:not} supported by {hi:Coarsened Exact} matching.{break}
 {hi:Example 1:} exp(abs(empl-t.empl) < 20 | min(empl,t.empl)/max(empl,t.empl) >= 0.8){break}
 {hi:Example 2:} exp(region != t.region){p_end}
@@ -187,7 +188,7 @@ addition, there can be intrinsical clustering of the specified units (see option
 periods. The row {it:Clustered} in the output designates the number of observations belonging to a cluster. The row {it:Clusters} accomodates the
 number of different clusters (the size of the cluster aggregate). If {cmd:report} variables are specified, the reported standard errors are clustered
 accordingly. The {cmd:unmatched} standard errors are only clustered, if {cmd:unit} is specified.{p_end}
-{p}Additionally, the Standardized Differences in Means ({hi:SDM}) according to {it:Hedge's g} (1981) are reported. An SDM below 0.2 constitutes a 
+{p}Additionally, the Standardized Differences in Means ({hi:SDM}) according to {it:Hedge's g} (1981) are reported. An SDM below 0.2 constitutes a
 "small" difference (Cohen, 1988). In praxis, the effect size should be {hi:well below} that value.{p_end}
 {p}All reported statistics are returned in the matrix {hi:r(match)}. Furthermore, the number of computational steps is returned in {hi:r(comp)} to
 assess the complexity of the matching.{p_end}
@@ -226,10 +227,10 @@ as a second regression on the matched data suggests.{p_end}
     sum age
     gen agegroup = autocode(age,5,r(min),r(max))
     sum weight
-    gen weightgroup = autocode(weight,5,r(min),r(max)) 
+    gen weightgroup = autocode(weight,5,r(min),r(max))
     egen long coarsecell = group(agegroup gender weightgroup)
     gen effect = treated*period // treatment effect (interaction term for DiD)
-    probit treated age gender weight if period == 0 // omitting "unobserved" selection 
+    probit treated age gender weight if period == 0 // omitting "unobserved" selection
     predict score // propensity score
 
     // Copying and Non-Copying Score-based Neighborhood Matching
@@ -241,7 +242,7 @@ as a second regression on the matched data suggests.{p_end}
     drop _*
     ultimatch score if period == 0, treated(treated) report(score age weight gender fitness)
     sum _weight if treated == 0 // compare the weights
-    di r(sum) 
+    di r(sum)
 
     // Single Score-based Neighborhood Matching
     // with single draw
@@ -288,7 +289,7 @@ as a second regression on the matched data suggests.{p_end}
     // Coarsened Exact Matching
     cap drop _*
     ultimatch if period == 0, treated(treated) report(score age weight gender fitness) exact(agegroup weightgroup gender)
-    
+
     // Copying Single Score-based Neighborhood Matching
     // alternative method to Coarsened Exact based on pseudo score (allows all score-based options like single, copy, greedy)
     // caliper of 0.5 prevents cell transgression
@@ -362,7 +363,7 @@ as a second regression on the matched data suggests.{p_end}
 
 {title:Update History}
 
-{p 0 11}{hi:2020.01.20} Optimized the calculation of the outside reference point for the hypersphere leeway algorithm.{p_end}
+{p 0 11}{hi:2020.01.22} Optimized the calculation of the outside reference point for the hypersphere leeway algorithm.{p_end}
 
 {p 0 11}{hi:2019.09.10} Implemented Standardized Differences in Means ({hi:SDM}) as additional similarity measurement.{break}
 Non-Clustered standard errors are now robust.{p_end}
@@ -381,11 +382,11 @@ Added an additional example.{p_end}
 {title:Author}
 
 {p 4 4}Thorsten Doherr{break}
-Centre for European Economic Research{break}
+Centre for European Economic Research (ZEW){break}
 L7,1{break}
 68161 Mannheim{break}
 Germany{break}
 Phone: +49 621 1235 291{break}
 Fax: +49 621 1235 170{break}
 E-Mail: doherr@zew.de{break}
-Internet: www.zew.de
+Source: https://github.com/ThorstenDoherr

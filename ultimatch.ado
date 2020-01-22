@@ -1550,19 +1550,31 @@ void _ultimatchcopy(real scalar from)
 }
 
 void _ultimatchdistanceaxis(real scalar obs, real scalar axispos,  real scalar varpos, string scalar covmat)
-{	real matrix S, M, base, dif
+{	real matrix S, M, dif
+	real matrix p75, p50, p25, s
 	real scalar i, varcnt
 	
 	cov = st_matrix(covmat) 
 	st_view(S=.,(1,obs),(axispos))
 	st_view(M=.,(1,obs),(varpos..varpos+cols(cov)-1)) // distance variables
-	base = mean(M) - colmax(M)
+	
+	p75 = J(1,cols(M),.)
+	p50 = J(1,cols(M),.)
+	p25 = J(1,cols(M),.)
+	for (i = 1; i <= cols(M); i++)
+	{	s = sort(M[.,i],1)
+		p75[1,i] = s[ceil(rows(s)*0.75),1]
+		p50[1,i] = s[ceil(rows(s)*0.50),1]
+		p25[1,i] = s[ceil(rows(s)*0.25),1]
+	}
+	base = p50+(p25-p75)
 	for (i = 1; i <= obs; i++)
 	{	dif = base :- M[i, .]
 		dif = dif * cov * dif'
 		S[i,1] = sqrt(dif[1,1])
 	}
 }
+
 
 real matrix _ultimatchsingle(real matrix neighbor, real scalar between, real scalar draw)
 {	real matrix top, bot

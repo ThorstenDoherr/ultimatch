@@ -12,7 +12,7 @@ STATA
 
 ## Version history
 
-2020.01.20
+2020.01.22
 * Optimized the calculation of the outside reference point for the hypersphere leeway algorithm.
 
 2019.09.10
