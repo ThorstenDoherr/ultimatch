@@ -629,7 +629,7 @@ program define ultimatch, rclass
 				else {
 					local sdmf = `""  " %8.5g `sdm'"'
 				}
-				di as text "{ralign 16:`var'} {c |} " as result %14.9g `tmean' "  "  %14.9g `cmean' as text " {c |} " as result %9.6g `r' "  " %7.2f `t' "  " %5.3f `p' `sdmf'
+				di as text "{ralign 16:`var'} {c |} " as result %14.9g round(`tmean',0.000000001) "  "  %14.9g round(`cmean',0.000000001) as text " {c |} " as result %9.6g `r' "  " %7.2f `t' "  " %5.3f `p' `sdmf'
 				matrix `matrix' = `matrix' \ (`tmean',`cmean',`r',`t',`p',`sdm')
 				local rownames = "`rownames' u_`v'"
 			}		
@@ -678,7 +678,7 @@ program define ultimatch, rclass
 			else {
 				local sdmf = `""  " %8.5g `sdm'"'
 			}
-			di as text "{ralign 16:`var'} {c |} " as result %14.9g `tmean' "  "  %14.9g `cmean' as text " {c |} " as result %9.6g `r' "  " %7.2f `t' "  " %5.3f `p' `sdmf'
+			di as text "{ralign 16:`var'} {c |} " as result %14.9g round(`tmean',0.000000001) "  "  %14.9g round(`cmean',0.000000001) as text " {c |} " as result %9.6g `r' "  " %7.2f `t' "  " %5.3f `p' `sdmf'
 			matrix `matrix' = `matrix' \ (`tmean',`cmean',`r',`t',`p',`sdm')
 			local rownames = "`rownames' m_`v'"
 		}		

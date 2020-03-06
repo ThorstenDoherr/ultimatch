@@ -12,6 +12,9 @@ STATA
 
 ## Version history
 
+2020.03.06
+* The reported means are displayed as rounded numbers (9th digit after the comma).
+
 2020.01.22
 * Optimized the calculation of the outside reference point for the hypersphere leeway algorithm.
 

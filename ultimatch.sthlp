@@ -1,5 +1,5 @@
 {smcl}
-{* 22jan2020}{...}
+{* 06mar2020}{...}
 {hline}
 help for {hi:ultimatch}
 {hline}
@@ -362,6 +362,8 @@ as a second regression on the matched data suggests.{p_end}
 {text}
 
 {title:Update History}
+
+{p 0 11}{hi:2020.03.06} The reported means are displayed as rounded numbers (9th digit after the comma).{p_end}
 
 {p 0 11}{hi:2020.01.22} Optimized the calculation of the outside reference point for the hypersphere leeway algorithm.{p_end}
 
