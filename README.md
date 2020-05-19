@@ -12,7 +12,7 @@ STATA
 
 ## Version history
 
-2020.04.19
+2020.05.19
 * Small adjustments to the help file.
 
 2020.03.06
