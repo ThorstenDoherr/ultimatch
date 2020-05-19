@@ -74,11 +74,11 @@ also add up to 1. If the option {cmd:copy} is not specified, overlapping counter
 for subsequent estimations. If options require to create copies of a treated observation the sum of the weights of the copies add up to
 1. These weights can be considered sampling weights ({hi:pweight}). {break}{hi:_weight} is missing for non-matched observations.{p_end}
 
-{p 0 4}{hi:_support}: marks observations with common support. It will be created if option {cmd:support} is specified.{break}
-{hi:_support} is missing for non-matched observations, 1 for observations with common support and 0 for observations without support.{p_end}
+{p 0 4}{hi:_support}: marks observations with common support. It will be created when option {cmd:support} was specified.{break}
+{hi:_support} has the value 1 for observations with common support and 0 for observations without support. Only observations with common support will be matched.{p_end}
 
 {p 0 4}{hi:_copy}: contains a dummy designating observations that were copied (appended to the data) to avoid conflicts between treated observations
-over a mutual counterfactual. It will only be created if the option {cmd:copy} is specified. Only if option {cmd:full} was specified, treated will be
+over a mutual counterfactual. It will only be created when the option {cmd:copy} was specified. Only if option {cmd:full} was specified, treated will be
 among the copied observations.{break}{hi:_copy} is missing for non-matched observations, 1 for matched and appended and 0 for matched, original
 observations.{p_end}
 
@@ -362,6 +362,8 @@ as a second regression on the matched data suggests.{p_end}
 {text}
 
 {title:Update History}
+
+{p 0 11}{hi:2020.05.19} Small adjustments to the help file.{p_end}
 
 {p 0 11}{hi:2020.03.06} The reported means are displayed as rounded numbers (9th digit after the comma).{p_end}
 

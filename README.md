@@ -12,6 +12,9 @@ STATA
 
 ## Version history
 
+2020.04.19
+* Small adjustments to the help file.
+
 2020.03.06
 * The reported means are displayed as rounded numbers (9th digit after the comma).
 
