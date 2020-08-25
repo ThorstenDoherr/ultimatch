@@ -12,7 +12,7 @@ STATA
 
 ## Version history
 
-2020.05.19
+2020.05.19 (ssc repository version)
 * Small adjustments to the help file.
 
 2020.03.06
@@ -37,7 +37,7 @@ STATA
 * ultimatch now supports radius matching for the distance-based matching method.
 * Added an additional example.
 
-2019.04.25 (ssc repository version)
+2019.04.25 (old ssc repository version)
 * Initial version.
 
 ### Author
