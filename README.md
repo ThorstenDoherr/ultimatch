@@ -12,7 +12,12 @@ STATA
 
 ## Version history
 
-2020.05.19 (ssc repository version)
+2021.02.02
+* Distance-based matching now supports the **draw** option.
+* Matching results can be reproduced with **set seed**.
+* Fixed a bug in score-based matching regarding the combination of **copy** and **single**.
+
+2020.05.19
 * Small adjustments to the help file.
 
 2020.03.06
@@ -37,7 +42,7 @@ STATA
 * ultimatch now supports radius matching for the distance-based matching method.
 * Added an additional example.
 
-2019.04.25 (old ssc repository version)
+2019.04.25 (ssc repository version)
 * Initial version.
 
 ### Author

@@ -1,5 +1,5 @@
 {smcl}
-{* 06mar2020}{...}
+{* 02feb2021}{...}
 {hline}
 help for {hi:ultimatch}
 {hline}
@@ -42,8 +42,8 @@ the specified radius instead by the respectively closest observation. Every obse
 neighborhood is complete when the surfaces of the three involved spheres cease to intersect.{p_end}
 
 {p}Score-based matching exploits the fact that with only one dimension, the spheres transform to points along the score axis and the
-closest point is immediately ascertainable. This circumstance allows for more flexible options, extending the neighborhood beyond the nearest
-one.{p_end}
+closest point is immediately ascertainable. With only one dimension, a score can be objectively larger or smaller than another score allowing for the option 
+{cmd:between}, which eludes a definition in the multi-dimensional space.{p_end}
 
 {p}{hi:Percentile Rank} transformation can be applied on the score or the distance variables. A percentile rank is the percentage of distinct
 values that are equal or lower than it. As opposed to percentiles, variables with the same value always have the same percentile rank eliminating the
@@ -101,8 +101,7 @@ variable of the counterfactuals is suggested to either remove outlying counterfa
 {p 0 4}{ul:d}raw({it:integer}) specifies the number of neighbors for every treated observation to be drawn. Neighbors with the same score or
 distance are considered one draw unless the option {cmd:single} is specified. With this option, it is possible to diminish the burden of the
 "nearest neighbor" by including a larger neighborhood at the expense of similarity. It is {hi:not} supported by {hi:Coarsened Exact} matching
-because it always draws all observations in a cell defined by the option {cmd:exact}. It is also {hi:not} supported by distance-based matching
-because the algorithm can only identify the nearest neighbor.{p_end}
+because it always draws all observations in a cell defined by the option {cmd:exact}.{p_end}
 
 {p 0 4}{ul:exa}ct({it:varlist}) specifies a group of variables defining cells (stratums). The counterfactuals must be in the same cell as
 the corresponding treated observation, therefore the term {cmd:exact}. This option can be combined with any matching method. The
@@ -309,9 +308,9 @@ as a second regression on the matched data suggests.{p_end}
     cap drop _*
     ultimatch age weight gender if period == 0, treated(treated) report(score age weight gender fitness) caliper(0.05) rank euclid radius
 
-    // Mahalanobis Distance-based Neighborhood Matching
+    // Mahalanobis Distance-based Neighborhood Matching (multiple counterfactuals)
     cap drop _*
-    ultimatch age weight gender if period == 0, treated(treated) report(score age weight gender fitness)
+    ultimatch age weight gender if period == 0, treated(treated) report(score age weight gender fitness) draw(3)
 
     // Supported Mahalanobis Distance-based Neighborhood Matching incl. score (reporting unmatched for reference)
     cap drop _*
@@ -362,6 +361,10 @@ as a second regression on the matched data suggests.{p_end}
 {text}
 
 {title:Update History}
+
+{p 0 11}{hi:2021.02.01} Distance-based matching now supports the {cmd:draw} option.{break}
+Matching results can be reproduced with {cmd:set seed}.{break}
+Fixed a bug in score-based matching regarding the combination of {cmd:copy} and {cmd:single}.{p_end}
 
 {p 0 11}{hi:2020.05.19} Small adjustments to the help file.{p_end}
 
