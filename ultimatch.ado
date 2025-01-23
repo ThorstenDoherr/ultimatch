@@ -1,18 +1,12 @@
-// 2021.02.02 \\
+// 2024.12.02 \\
 cap program drop ultimatch
 program define ultimatch, rclass
 	version 9.0
-	syntax [varlist(default=none)] [if] [in], [EXAct(varlist)] [CAliper(real -1.0)] [Draw(integer -1)] [EXP(string)] [Limit(string)] Treated(varname) [REport(varlist))] [UNIt(varlist)] [Between] [Greedy] [SIngle] [SUpport] [UNMatched] [COpy] [Full] [RANk] [EUclid] [Mahalanobis] [RADius]
+	syntax [varlist(default=none)] [if] [in], [EXAct(varlist)] [CAliper(real -1)] [Draw(integer -1)] [EXP(string)] [Limit(string)] Treated(varname) [REport(varlist))] [UNIt(varlist)] [EARTH(real 6371)] [Between] [Greedy] [SIngle] [SUpport] [UNMatched] [COpy] [Full] [RANk] [EUclidean] [Mahalanobis] [HAVersine] [COSine] [RADius]
 	tempvar axis tr mark cell nouse base cluster claim lock cnt trcnt ctcnt miss order
-	tempname table cell matrix row
+	tempname table cell matrix temp row
 	matrix `matrix' = (.)
 	return matrix match = `matrix'
-	if `caliper' <= 0 {
-		local caliper = .
-	}
-	if `draw' <= 0 {
-		local draw = .
-	}
 	tokenize `"`varlist'"'
 	local copy = "`copy'"' != ""
 	local unmatched = "`unmatched'" != ""
@@ -21,19 +15,25 @@ program define ultimatch, rclass
 	local single = "`single'" != ""
 	local support = "`support'" != ""
 	local rank = "`rank'" != ""
-	local euclid = "`euclid'" != ""
-	local mahalanobis = "`mahalanobis'" != ""
 	local full = "`full'" != ""
 	local radius = "`radius'" != ""
 	local clustered = 0
 	local method = ""
+	local draw = cond(`draw' <= 0, ., `draw')
+	local caliper = cond(`caliper' < 0, ., `caliper')
 	if `greedy' & `copy' {
 		di as error "options greedy and copy are mutually exclusive"
 		error 999
 	}
-	if `euclid' & `mahalanobis' {
-		di as error "options euclid and mahalanobis are mutually exclusive"
-		error 999
+	local distance = ""
+	foreach v in euclidean mahalanobis haversine cosine {
+		if "``v''" != "" {
+			if "`distance'" != "" {
+				di as error "options euclidean, mahalanobis, haversine and cosine are mutually exclusive"
+				error 999
+			}
+			local distance = "``v''"
+		}
 	}
 	if `full' & `copy' == 0 {
 		di as error "full is a sub-option of copy"
@@ -53,8 +53,8 @@ program define ultimatch, rclass
 	}
 	if "`method'" == "" {
 		if `"`exact'"' != "" {
-			if  `draw' != . | `caliper' != . | `between' | `greedy' | `support' | `copy' | `rank' | `euclid' | `mahalanobis' | `radius' | `"`limit'"' != "" | `"`exp'"' != "" {
-				di as error "coarsened exact mode does not support following options: draw, caliper, between, greedy, support, copy, rank, single, euclid, mahalanobis, radius, limit, exp"
+			if  `draw' != . | `caliper' != . | `between' | `greedy' | `support' | `copy' | `rank' | `radius' | "`distance'" != "" | `"`limit'"' != "" | `"`exp'"' != "" {
+				di as error "coarsened exact mode does not support following options: draw, caliper, between, greedy, support, copy, rank, single, euclidean, mahalanobis, haversine, cosine, radius, limit, exp"
 				error 999
 			}
 			local draw = .
@@ -69,8 +69,8 @@ program define ultimatch, rclass
 		di as error "distance based matching does not support following options: between"
 		error 999
 	}
-	if "`method'" == "Score" & (`euclid' | `mahalanobis') {
-		di as error "score based matching does not support following options: euclid, mahalanobis"
+	if "`method'" == "Score" & "`distance'" != "" {
+		di as error "score based matching does not support following options: euclid, mahalanobis, haversine, cosine"
 		error 999
 	}
 	if `radius' & (`between' | `greedy' | `single' | `draw' != .) {
@@ -81,15 +81,36 @@ program define ultimatch, rclass
 		di as error "radius matching requires the specification of option: caliper"
 		error 999
 	}
+	if "`distance'" == "haversine" & `rank' {
+		di as error "haversine distance matching does not support rank transformation"
+		error 999
+	}
+	if "`distance'" == "cosine" & `rank' {
+		di as error "cosine distance matching does not support rank transformation"
+		error 999
+	}
+	if "`distance'" == "haversine" & `"`3'"' != "" {
+		di as error "specify only one variable for the latitude and one for the longitude in that order"
+		error 999
+	}
+	if `earth' == . {
+		local earth = 6371
+	}
+	if "`distance'" == "haversine" & `earth' <= 0 {
+		di as error "invalid earth radius"
+		error 999
+	}
+	if "`distance'" == "haversine" & `caliper' != . & `caliper' > _pi * `earth' {
+		di as error "caliper exceeds valid range for haversine distance (pi*`earth')"
+		error 999
+	}
 	if "`method'" == "Distance" {
-		if `rank' {
-			if `mahalanobis' == 0 {
-				local euclid = 1
+		if "`distance'" == "" {
+			if `rank' {
+				local distance = "euclidean"
 			}
-		}
-		else {
-			if `euclid' == 0 {
-				local mahalanobis = 1
+			else {
+				local distance = "mahalanobis"
 			}
 		}
 	}
@@ -101,8 +122,7 @@ program define ultimatch, rclass
 	local matching = "`matching'" + cond(`single',"Single ","")
 	local matching = "`matching'" + cond(`greedy',"Greedy ","")
 	local matching = "`matching'" + cond(`between',"Sandwiched ","")
-	local matching = "`matching'" + cond(`euclid',"Euclidean ","")
-	local matching = "`matching'" + cond(`mahalanobis',"Mahalanobis ","")	
+	local matching = "`matching'" + cond("`distance'" != "", proper("`distance'")+" ","")
 	local matching = "`matching'" + cond("`method'" != "","`method'-based ", "")
 	local matching = "`matching'" + cond(`rank',"Percentile Rank ", "")
 	local matching = "`matching'" + cond(`radius',"Radius ", "")
@@ -119,7 +139,7 @@ program define ultimatch, rclass
 		di as error "_weight is already defined"
 		error 999
 	}
-	if "`Method'" != "" {
+	if "`method'" != "" {
 		cap confirm var _distance
 		if _rc == 0 {
 			di as error "_distance is already defined"
@@ -137,6 +157,13 @@ program define ultimatch, rclass
 		cap confirm var _support
 		if _rc == 0 {
 			di as error "_support is already defined"
+			error 999
+		}
+	}
+	if "`distance'" == "cosine" {
+		cap confirm var _length
+		if _rc == 0 {
+			di as error "_length is already defined"
 			error 999
 		}
 	}
@@ -209,6 +236,21 @@ program define ultimatch, rclass
 		qui egen long `miss' = rmiss(`*') if `nouse' == 0
 		qui replace `nouse' = 9 if `miss' > 0 & `miss' != .
 		qui drop `miss'
+		if "`distance'" == "haversine" {
+			qui count if `nouse' == 0 & (`1' > 90 | `1' < -90)
+			if r(N) > 0 {
+				di as text "Latitude outside conventional range [-90,90]"
+			}
+			qui count if `nouse' == 0 & (`2' > 180 | `2' < -180)
+			if r(N) > 0 {
+				di as text "Longitude outside conventional range [-180,180]"
+			}
+		}
+		if "`distance'" == "cosine" {
+			local varcnt = wordcount("`*'")
+			qui egen long `miss' = anycount(`*') if `nouse' == 0, values(0)
+			qui replace `nouse' = 9 if `miss' == `varcnt'
+		}
 		local score = `"`1'"'
 	}
 	qui gen byte `tr' = (`treated' == 1) if `nouse' == 0
@@ -317,163 +359,150 @@ program define ultimatch, rclass
 		qui gen byte `cell' = 1 in 1/`N'
 	}
 	if "`method'" == "Distance" {
-		if `radius' {
-			qui gen long _match = .
-			qui gen double _weight = .
-			qui gen double _distance = .
-			label var _match "match id"
-			label var _weight "pweight"
-			if `rank' {
-				if `mahalanobis' {
-					label var _distance "closest mahalanobis rank radius distance"
-				}	
-				else {
-					label var _distance "closest euclidean rank radius distance"
-				}
-				local distvars = "`ranks'"
+		qui gen long _match = .
+		qui gen double _weight = .
+		qui gen double _distance = .
+		label var _match "match id"
+		label var _weight "pweight"
+		if `rank' {
+			local label = cond(`radius', "closest `distance' rank radius distance", "nearest `distance' rank distance")
+			local distvars = "`ranks'"
+		}
+		else {
+			local label = cond(`radius', "closest `distance' radius distance", "nearest `distance' distance")
+			if "`distance'" == "haversine" {
+				tempvar x y z
+				qui gen double `x' = .
+				qui gen double `y' = .
+				qui gen double `z' = .
+				local distvars = "`x' `y' `z'"
+				local auxvars = "`*'"
+			}
+			else if "`distance'" == "cosine" {
+				qui gen double _length = .
+				label var _length "raw vector length"
+				local distvars = "`*'"
+				local auxvars = "_length"
+				qui recast double `distvars'
 			}
 			else {
-				if `mahalanobis' {
-					label var _distance "closest mahalanobis radius distance"
-				}	
-				else {
-					label var _distance "closest euclidean radius distance"
-				}
 				local distvars = "`*'"
 			}
-			qui gen double `axis' = .
-			order `nouse' `axis' `cell' `tr' _match _distance _weight `distvars'
-			local varcnt = wordcount("`distvars'")
-			if `mahalanobis' {
-				qui corr `distvars' in 1/`N', covar noformat
-				matrix `matrix' = invsym(r(C))
-			}
-			else {
-				matrix `matrix' = diag(J(1,`varcnt',1)) // identity matrix replaces inverted covariance matrix for eucledian distance
-			}
-			mata: _ultimatchdistanceaxis(`N', 2, 8, "`matrix'")
-			sort `nouse' `cell' `axis' `tr' `order'
-			mata: _ultimatchradius(`varcnt', "`matrix'", `caliper', `copy')
-			local M = r(obs)
-			if r(match) == 0 {
-				di as error "unable to match"
-				drop _match _weight _distance
-				error 999
-			}
-			return scalar comp = r(comp)
-			order _match _weight _distance
+		}
+		label var _distance "`label'"
+		qui gen double `axis' = .
+		if `radius' {
+			order `nouse' `axis' `cell' `tr' _match _distance _weight `distvars' `auxvars'
+			local varpos = 8
 		}
 		else {
 			qui gen long `claim' = .
 			qui gen byte `lock' = .
-			qui gen long _match = .
-			qui gen double _weight = .
-			qui gen double _distance = .
-			label var _match "match id"
-			label var _weight "pweight"
-			if `rank' {
-				if `mahalanobis' {
-					label var _distance "nearest mahalanobis rank distance"
-				}	
-				else {
-					label var _distance "nearest euclidean rank distance"
-				}
-				local distvars = "`ranks'"
-			}
-			else {
-				if `mahalanobis' {
-					label var _distance "nearest mahalanobis distance"
-				}	
-				else {
-					label var _distance "nearest euclidean distance"
-				}
-				local distvars = "`*'"
-			}
-			if `draw' == . {
-				local draw = 1
-			}
-			qui gen double `axis' = .
-			order `nouse' `axis' `cell' `tr' _match _distance _weight `claim' `lock' `distvars'
-			local varcnt = wordcount("`distvars'")
-			if `mahalanobis' {
-				qui corr `distvars' in 1/`N', covar noformat
-				matrix `matrix' = syminv(r(C))
-			}
-			else {
-				matrix `matrix' = diag(J(1,`varcnt',1)) // identity matrix replaces inverted covariance matrix for eucledian distance
-			}
-			mata: _ultimatchdistanceaxis(`N', 2, 10, "`matrix'")
-			sort `nouse' `cell' `axis' `tr' `order'
-			mata: _ultimatchdistance(`varcnt', "`matrix'", `caliper', `single', `draw', `greedy', `copy')
-			qui drop `claim'
-			local M = r(obs)
-			if r(match) == 0 {
-				di as error "unable to match"
-				drop _match _weight _distance
-				error 999
-			}
-			return scalar comp = r(comp)
-			order _match _weight _distance
+			order `nouse' `axis' `cell' `tr' _match _distance _weight `claim' `lock' `distvars' `auxvars'
+			local varpos = 10
+		}
+		local varcnt = wordcount("`distvars'")
+		local convert = ""
+		local draw = max(`draw', 1)
+		local calipso = `caliper'
+		local diameter = 2*`earth'
+		if `rank' {
+			local distvars = "`*'"
+		}
+		if "`distance'" == "mahalanobis" {
+			mata: ultimatch_axis_mahal(`N', 2, `varpos', `varcnt')
+			matrix `matrix' = r(invcov)
+			local convert = "`matrix'"
+			matrix `temp' = r(vantage)
+			matrix colnames `temp' = `distvars'
+			matrix rownames `temp' = vantage
+			return matrix vantage = `temp'
+		}
+		else if "`distance'" == "cosine" {
+			mata: ultimatch_axis_cosine(`N', 2, `varpos', `varcnt')
+			local calipso = sqrt(2*`caliper')
+			matrix `temp' = r(vantage)
+			matrix colnames `temp' = `distvars'
+			matrix rownames `temp' = vantage
+			return matrix vantage = `temp'
+		}
+		else if "`distance'" == "haversine" {
+			mata: ultimatch_axis_haversine(`N', 2, `varpos', `earth')
+			local calipso = `diameter' * sin(`caliper'/`diameter')
+			matrix `temp' = r(meridian)
+			matrix colnames `temp' = latitude longitude height
+			matrix rownames `temp' = vantage
+			return matrix meridian = `temp'
+			matrix `temp' = r(vantage)
+			matrix colnames `temp' = x y z
+			matrix rownames `temp' = vantage
+			return matrix vantage = `temp'
+		}
+		else {
+			mata: ultimatch_axis_euclid(`N', 2, `varpos', `varcnt')
+			matrix `temp' = r(vantage)
+			matrix colnames `temp' = `distvars'
+			matrix rownames `temp' = vantage
+			return matrix vantage = `temp'
+		}
+		sort `nouse' `cell' `axis' `tr' `order'
+		if `radius' {
+			mata: ultimatch_radius(`varcnt', "`convert'", `calipso', `copy')
+		}
+		else {
+			mata: ultimatch_distance(`varcnt', "`convert'", `calipso', `single', `draw', `greedy', `copy')
+		}
+		cap drop `claim'
+		cap drop `lock'
+		local M = r(obs)
+		if r(match) == 0 {
+			di as error "unable to match"
+			drop _match _weight _distance
+			error 999
+		}
+		return scalar comp = r(comp)
+		order _match _weight _distance
+		if "`distance'" == "cosine" {
+			qui replace _distance = _distance^2 / 2 if _distance != .
+		}
+		else if "`distance'" == "haversine" {
+			qui replace _distance = `diameter' * asin(_distance/`diameter') if _distance != .
 		}
 	}
 	else if "`method'" == "Score" {
+		qui gen long _match = .
+		qui gen double _weight = .
+		qui gen double _distance = .
+		label var _match "match id"
+		label var _weight "pweight"
+		if `rank' {
+			local label = cond(`radius', "closest rank radius distance", "nearest rank distance")
+			local distvars = "`ranks'"
+		}
+		else {
+			local label = cond(`radius', "closest radius distance", "nearest distance")
+			local distvars = "`score'"
+		}
+		label var _distance "`label'"
+		sort `nouse' `cell' `distvars' `tr'	`order'
 		if `radius' {
-			qui gen long _match = .
-			qui gen double _weight = .
-			qui gen double _distance = .
-			label var _match "match id"
-			label var _weight "pweight"
-			if `rank' {
-				label var _distance "closest rank radius distance"
-				local distvars = "`ranks'"
-			}
-			else {
-				label var _distance "closest radius distance"
-				local distvars = "`score'"
-			}
-			sort `nouse' `cell' `distvars' `tr'	`order'
 			order `nouse' `distvars' `cell' `tr' _match _distance _weight
-			mata: _ultimatchradius(1, "", `caliper', `copy')
-			local M = r(obs)
-			if r(match) == 0 {
-				di as error "unable to match"
-				drop _match _weight _distance
-				error 999
-			}
-			return scalar comp = r(comp)
-			order _match _weight _distance
+			mata: ultimatch_radius(1, "", `caliper', `copy')
 		}
 		else {
 			qui gen long `claim' = .
-			qui gen long _match = .
-			qui gen double _weight = .
-			qui gen double _distance = .
-			label var _match "match id"
-			label var _weight "pweight"
-			if `rank' {
-				label var _distance "nearest rank distance"
-				local distvars = "`ranks'"
-			}
-			else {
-				label var _distance "nearest distance"
-				local distvars = "`score'"
-			}
-			if `draw' == . {
-				local draw = 1
-			}
-			sort `nouse' `cell' `distvars' `tr'	`order'
 			order `nouse' `distvars' `cell' `tr' _match _distance _weight `claim'
-			mata: _ultimatchneighbor(`caliper', `single', `draw', `between', `greedy', `copy')
+			mata: ultimatch_neighbor(`caliper', `single', `draw', `between', `greedy', `copy')
 			qui drop `claim'
-			local M = r(obs)
-			if r(match) == 0 {
-				di as error "unable to match"
-				drop _match _weight _distance
-				error 999
-			}
-			return scalar comp = r(comp)
-			order _match _weight _distance
 		}
+		local M = r(obs)
+		if r(match) == 0 {
+			di as error "unable to match"
+			drop _match _weight _distance
+			error 999
+		}
+		return scalar comp = r(comp)
+		order _match _weight _distance
 	}
 	else {
 		sort `nouse' `cell' `order'
@@ -701,10 +730,10 @@ program define ultimatch, rclass
 end
 
 mata:
-void _ultimatchneighbor(real scalar caliper, real scalar single, real scalar draw, real scalar between, real scalar greedy, real scalar copy)
+void ultimatch_neighbor(real scalar caliper, real scalar single, real scalar draw, real scalar between, real scalar greedy, real scalar copy)
 {	real matrix D, neighbor, nb, miss
 	real scalar hood, top, bot, tgo, bgo, tdif, bdif, tprev, bprev, tcnt, bcnt, cnt, rows
-	real scalar i, j, w, reset, claim
+	real scalar i, j, w, reset, claim, idif
 	real scalar match, obs, uselimit, usecmd
 	string scalar limit, cmd, explimit, expcmd, exp, str
 	real scalar comp
@@ -929,7 +958,7 @@ void _ultimatchneighbor(real scalar caliper, real scalar single, real scalar dra
 			continue
 		}
 		if (single)
-		{	nb = _ultimatchsingle(neighbor[1..hood,.],between,draw)
+		{	nb = ultimatch_single(neighbor[1..hood,.],between,draw)
 			hood = rows(nb)
 		}
 		else
@@ -937,10 +966,11 @@ void _ultimatchneighbor(real scalar caliper, real scalar single, real scalar dra
 		}
 		w = 1/hood
 		D[i,4] = match
-		D[i,5] = 0
-		D[i,6] = 1
 		if (copy == 1)
-		{	for (j = 1; j <= hood; j++)
+		{	idif = D[i,5]
+			if (idif == .) idif = 0
+			D[i,6] = 1
+			for (j = 1; j <= hood; j++)
 			{	pos = nb[j,1]
 				dif = nb[j,2]
 				if (D[pos,4] == .)
@@ -949,12 +979,14 @@ void _ultimatchneighbor(real scalar caliper, real scalar single, real scalar dra
 					D[pos,6] = w
 				}
 				else
-				{	_ultimatchcopy(pos)
+				{	ultimatch_copy(pos)
 					_st_store(st_nobs(), 5, match)
 					_st_store(st_nobs(), 6, dif)
 					_st_store(st_nobs(), 7, w)
 				}
+				if (dif > idif) idif = dif
 			}
+			D[i,5] = idif
 		}
 		else if (copy == 2)
 		{	D[i,6] = w
@@ -963,8 +995,12 @@ void _ultimatchneighbor(real scalar caliper, real scalar single, real scalar dra
 				dif = nb[j,2]
 				if (j > 1)
 				{	match++
-					_ultimatchcopy(i)
+					ultimatch_copy(i)
 					_st_store(st_nobs(), 5, match)
+					_st_store(st_nobs(), 6, dif)
+				}
+				else
+				{	D[i,5] = dif
 				}
 				if (D[pos,4] == .)
 				{	D[pos,4] = match
@@ -972,7 +1008,7 @@ void _ultimatchneighbor(real scalar caliper, real scalar single, real scalar dra
 					D[pos,6] = w
 				}
 				else
-				{	_ultimatchcopy(pos)
+				{	ultimatch_copy(pos)
 					_st_store(st_nobs(), 5, match)
 					_st_store(st_nobs(), 6, dif)
 					_st_store(st_nobs(), 7, w)
@@ -980,7 +1016,9 @@ void _ultimatchneighbor(real scalar caliper, real scalar single, real scalar dra
 			}
 		}
 		else if (greedy)
-		{	reset = i
+		{	idif = 0
+			D[i,6] = 1
+			reset = i
 			for (j = 1; j <= hood; j++)
 			{	pos = nb[j,1]
 				dif = nb[j,2]
@@ -995,13 +1033,18 @@ void _ultimatchneighbor(real scalar caliper, real scalar single, real scalar dra
 				D[pos,5] = dif
 				D[pos,6] = w
 				D[pos,7] = i
+				if (dif > idif) idif = dif
 			}
+			D[i,5] = idif
 			if (reset < i)
 			{	i = reset-1
 			}
 		}
 		else
-		{	for (j = 1; j <= hood; j++)
+		{	idif = D[i,5]
+			if (idif == .) idif = 0
+			D[i,6] = 1
+			for (j = 1; j <= hood; j++)
 			{	pos = nb[j,1]
 				dif = nb[j,2]
 				if (dif < D[pos,5])
@@ -1014,7 +1057,9 @@ void _ultimatchneighbor(real scalar caliper, real scalar single, real scalar dra
 				else
 				{	D[pos,6] = D[pos,6] + w
 				}
+				if (dif > idif) idif = dif
 			}
+			D[i,5] = idif
 		}
 	}
 	st_numscalar("r(obs)", obs)	
@@ -1023,13 +1068,14 @@ void _ultimatchneighbor(real scalar caliper, real scalar single, real scalar dra
 	return
 }
 
-void _ultimatchradius(real scalar varcnt, string scalar covmat, real scalar caliper, real scalar copy)
+void ultimatch_radius(real scalar varcnt, string scalar matrix_name, real scalar caliper, real scalar copy)
 {	real matrix D, M, C, neighbor, difvec
 	real scalar hood, top, bot, dif, dist, distance
-	real scalar i, j, w
+	real scalar i, j, w, idif
 	real scalar match, obs, uselimit, usecmd
 	string scalar limit, cmd, explimit, expcmd, exp, str
 	real scalar comp
+	real scalar convert
 	
 	obs = st_nobs()
 	for (i=1; i <= obs; i++)
@@ -1044,13 +1090,12 @@ void _ultimatchradius(real scalar varcnt, string scalar covmat, real scalar cali
 		return
 	}
 	st_view(D=.,(1,obs),(2..7)) // score:1, cell:2, treated:3, match:4, distance:5, weight:6
-	if (varcnt > 1)
-	{	st_view(M=.,(1,obs),(8..8+varcnt-1)) // distance variables
-		C = st_matrix(covmat)
-		distance = 1
-	}
-	else
-	{	distance = 0
+	st_view(M=.,(1,obs),(8..8+varcnt-1)) // distance variables
+	convert = 0
+	distance = varcnt > 1
+	if (distance & matrix_name != "")
+	{	convert = 1
+		C = st_matrix(matrix_name)
 	}
 	limit = st_local("limit")
 	cmd = st_local("cmd")
@@ -1120,9 +1165,13 @@ void _ultimatchradius(real scalar varcnt, string scalar covmat, real scalar cali
 				}
 			}
 			if (distance)
-			{	difvec = M[i,.] :- M[top,.]
-				difvec = difvec * C * difvec'
-				dist = sqrt(difvec[1,1])
+			{	if (convert)
+				{	difvec = M[i,.] :- M[top,.]
+					dist = sqrt(difvec * C * difvec')
+				}
+				else
+				{	dist = sqrt(sum((M[i,.]:-M[top,.]):^2))
+				}
 				if (dist <= caliper)
 				{	hood++
 					neighbor[hood,1] = top
@@ -1169,9 +1218,13 @@ void _ultimatchradius(real scalar varcnt, string scalar covmat, real scalar cali
 				}
 			}
 			if (distance)
-			{	difvec = M[i,.] :- M[bot,.]
-				difvec = difvec * C * difvec'
-				dist = sqrt(difvec[1,1])
+			{	if (convert)
+				{	difvec = M[i,.] :- M[bot,.]
+					dist = sqrt(difvec * C * difvec')
+				}
+				else
+				{	dist = sqrt(sum((M[i,.]:-M[bot,.]):^2))
+				}
 				if (dist <= caliper)
 				{	hood++
 					neighbor[hood,1] = bot
@@ -1190,10 +1243,11 @@ void _ultimatchradius(real scalar varcnt, string scalar covmat, real scalar cali
 		}
 		w = 1/hood
 		D[i,4] = match
-		D[i,5] = 0
-		D[i,6] = 1
 		if (copy == 1)
-		{	for (j = 1; j <= hood; j++)
+		{	idif = D[i,5]
+			if (idif == .) idif = 0
+			D[i,6] = 1
+			for (j = 1; j <= hood; j++)
 			{	pos = neighbor[j,1]
 				dif = neighbor[j,2]
 				if (D[pos,4] == .)
@@ -1202,12 +1256,14 @@ void _ultimatchradius(real scalar varcnt, string scalar covmat, real scalar cali
 					D[pos,6] = w
 				}
 				else
-				{	_ultimatchcopy(pos)
+				{	ultimatch_copy(pos)
 					_st_store(st_nobs(), 5, match)
 					_st_store(st_nobs(), 6, dif)
 					_st_store(st_nobs(), 7, w)
 				}
+				if (dif > idif) idif = dif
 			}
+			D[i,5] = idif
 		}
 		else if (copy == 2)
 		{	D[i,6] = w
@@ -1216,8 +1272,12 @@ void _ultimatchradius(real scalar varcnt, string scalar covmat, real scalar cali
 				dif = neighbor[j,2]
 				if (j > 1)
 				{	match++
-					_ultimatchcopy(i)
+					ultimatch_copy(i)
 					_st_store(st_nobs(), 5, match)
+					_st_store(st_nobs(), 6, dif)
+				}
+				else
+				{	D[i,5] = dif
 				}
 				if (D[pos,4] == .)
 				{	D[pos,4] = match
@@ -1225,7 +1285,7 @@ void _ultimatchradius(real scalar varcnt, string scalar covmat, real scalar cali
 					D[pos,6] = w
 				}
 				else
-				{	_ultimatchcopy(pos)
+				{	ultimatch_copy(pos)
 					_st_store(st_nobs(), 5, match)
 					_st_store(st_nobs(), 6, dif)
 					_st_store(st_nobs(), 7, w)
@@ -1233,7 +1293,10 @@ void _ultimatchradius(real scalar varcnt, string scalar covmat, real scalar cali
 			}
 		}
 		else
-		{	for (j = 1; j <= hood; j++)
+		{	idif = D[i,5]
+			if (idif == .) idif = 0
+			D[i,6] = 1
+			for (j = 1; j <= hood; j++)
 			{	pos = neighbor[j,1]
 				dif = neighbor[j,2]
 				if (dif < D[pos,5])
@@ -1246,7 +1309,9 @@ void _ultimatchradius(real scalar varcnt, string scalar covmat, real scalar cali
 				else
 				{	D[pos,6] = D[pos,6] + w
 				}
+				if (dif > idif) idif = dif
 			}
+			D[i,5] = idif
 		}
 	}
 	st_numscalar("r(obs)", obs)	
@@ -1255,13 +1320,14 @@ void _ultimatchradius(real scalar varcnt, string scalar covmat, real scalar cali
 	return
 }
 
-void _ultimatchdistance(real scalar varcnt, string scalar covmat, real scalar caliper, real scalar single, real scalar draw, real scalar greedy, real scalar copy)
+void ultimatch_distance(real scalar varcnt, string scalar matrix_name, real scalar caliper, real scalar single, real scalar draw, real scalar greedy, real scalar copy)
 {	real matrix D, M, C, difvec, miss, neighbor, nb
 	real scalar hood, top, bot, dist, nearest, pos, dif, w, reset
-	real scalar i, j, match, obs, uselimit, usecmd
+	real scalar i, j, match, obs, uselimit, usecmd, idif
 	real scalar free, count
 	string scalar limit, cmd, explimit, expcmd, exp, str
 	real scalar comp
+	real scalar convert
 	
 	obs = st_nobs()
 	for (i=1; i <= obs; i++)
@@ -1277,7 +1343,11 @@ void _ultimatchdistance(real scalar varcnt, string scalar covmat, real scalar ca
 	}
 	st_view(D=.,(1,obs),(2..9)) // score:1, cell:2, treated:3, match:4, distance:5, weight:6, claim:7, lock:8
 	st_view(M=.,(1,obs),(10..10+varcnt-1)) // distance variables
-	C = st_matrix(covmat)
+	convert = 0
+	if (matrix_name != "")
+	{	convert = 1
+		C = st_matrix(matrix_name)
+	}
 	limit = st_local("limit")
 	cmd = st_local("cmd")
 	uselimit = 0
@@ -1371,9 +1441,13 @@ void _ultimatchdistance(real scalar varcnt, string scalar covmat, real scalar ca
 					D[top,4..7] = miss
 				}
 				else
-				{	difvec = M[i,.] :- M[top,.]
-					difvec = difvec * C * difvec'
-					dist = sqrt(difvec[1,1])
+				{	if (convert)
+					{	difvec = M[i,.] :- M[top,.]
+						dist = sqrt(difvec * C * difvec')
+					}
+					else
+					{	dist = sqrt(sum((M[i,.]:-M[top,.]):^2))
+					}
 					if (greedy & dist >= D[top,5])
 					{	break
 					}
@@ -1434,9 +1508,13 @@ void _ultimatchdistance(real scalar varcnt, string scalar covmat, real scalar ca
 					D[bot,4..7] = miss
 				}
 				else
-				{	difvec = M[i,.] :- M[bot,.]
-					difvec = difvec * C * difvec'
-					dist = sqrt(difvec[1,1])
+				{	if (convert)
+					{	difvec = M[i,.] :- M[bot,.]
+						dist = sqrt(difvec * C * difvec')
+					}
+					else
+					{	dist = sqrt(sum((M[i,.]:-M[bot,.]):^2))
+					}
 					if (greedy & dist >= D[bot,5])
 					{	break
 					}
@@ -1492,10 +1570,11 @@ void _ultimatchdistance(real scalar varcnt, string scalar covmat, real scalar ca
 			}
 			w = 1/hood
 			D[i,4] = match
-			D[i,5] = 0
-			D[i,6] = 1
 			if (copy == 1)
-			{	for (j = 1; j <= hood; j++)
+			{	idif = D[i,5]
+				if (idif == .) idif = 0
+				D[i,6] = 1
+				for (j = 1; j <= hood; j++)
 				{	pos = nb[j,1]
 					dif = nb[j,2]
 					if (D[pos,4] == .)
@@ -1504,12 +1583,14 @@ void _ultimatchdistance(real scalar varcnt, string scalar covmat, real scalar ca
 						D[pos,6] = w
 					}
 					else
-					{	_ultimatchcopy(pos)
+					{	ultimatch_copy(pos)
 						_st_store(st_nobs(), 5, match)
 						_st_store(st_nobs(), 6, dif)
 						_st_store(st_nobs(), 7, w)
 					}
+					if (dif > idif) idif = dif
 				}
+				D[i,5] = idif
 			}
 			else if (copy == 2)
 			{	D[i,6] = w
@@ -1518,8 +1599,12 @@ void _ultimatchdistance(real scalar varcnt, string scalar covmat, real scalar ca
 					dif = nb[j,2]
 					if (j > 1)
 					{	match++
-						_ultimatchcopy(i)
+						ultimatch_copy(i)
 						_st_store(st_nobs(), 5, match)
+						_st_store(st_nobs(), 6, dif)
+					}
+					else
+					{	D[i,5] = dif
 					}
 					if (D[pos,4] == .)
 					{	D[pos,4] = match
@@ -1527,7 +1612,7 @@ void _ultimatchdistance(real scalar varcnt, string scalar covmat, real scalar ca
 						D[pos,6] = w
 					}
 					else
-					{	_ultimatchcopy(pos)
+					{	ultimatch_copy(pos)
 						_st_store(st_nobs(), 5, match)
 						_st_store(st_nobs(), 6, dif)
 						_st_store(st_nobs(), 7, w)
@@ -1535,7 +1620,8 @@ void _ultimatchdistance(real scalar varcnt, string scalar covmat, real scalar ca
 				}
 			}
 			else if (greedy)
-			{	reset = i
+			{	idif = 0
+				reset = i
 				for (j = 1; j <= hood; j++)
 				{	pos = nb[j,1]
 					dif = nb[j,2]
@@ -1550,13 +1636,18 @@ void _ultimatchdistance(real scalar varcnt, string scalar covmat, real scalar ca
 					D[pos,5] = dif
 					D[pos,6] = w
 					D[pos,7] = i
+					if (dif > idif) idif = dif
 				}
+				D[i,5] = idif
 				if (reset < i)
 				{	i = reset-1
 				}
 			}
 			else
-			{	for (j = 1; j <= hood; j++)
+			{	idif = D[i,5]
+				if (idif == .) idif = 0
+				D[i,6] = 1
+				for (j = 1; j <= hood; j++)
 				{	pos = nb[j,1]
 					dif = nb[j,2]
 					if (dif < D[pos,5])
@@ -1569,7 +1660,9 @@ void _ultimatchdistance(real scalar varcnt, string scalar covmat, real scalar ca
 					else
 					{	D[pos,6] = D[pos,6] + w
 					}
+					if (dif > idif) idif = dif
 				}
+				D[i,5] = idif
 			}
 			break
 		}
@@ -1580,7 +1673,7 @@ void _ultimatchdistance(real scalar varcnt, string scalar covmat, real scalar ca
 	return
 }
 
-void _ultimatchcopy(real scalar from)
+void ultimatch_copy(real scalar from)
 {	real scalar i, to
 	st_addobs(1)
 	to = st_nobs()
@@ -1594,34 +1687,75 @@ void _ultimatchcopy(real scalar from)
 	}
 }
 
-void _ultimatchdistanceaxis(real scalar obs, real scalar axispos,  real scalar varpos, string scalar covmat)
-{	real matrix S, M, dif
-	real matrix p75, p50, p25, s
-	real scalar i, varcnt
-	
-	cov = st_matrix(covmat) 
-	st_view(S=.,(1,obs),(axispos))
-	st_view(M=.,(1,obs),(varpos..varpos+cols(cov)-1)) // distance variables
-	
-	p75 = J(1,cols(M),.)
-	p50 = J(1,cols(M),.)
-	p25 = J(1,cols(M),.)
-	for (i = 1; i <= cols(M); i++)
-	{	s = sort(M[.,i],1)
-		p75[1,i] = s[ceil(rows(s)*0.75),1]
-		p50[1,i] = s[ceil(rows(s)*0.50),1]
-		p25[1,i] = s[ceil(rows(s)*0.25),1]
-	}
-	base = p50+(p25-p75)
-	for (i = 1; i <= obs; i++)
-	{	dif = base :- M[i, .]
-		dif = dif * cov * dif'
-		S[i,1] = sqrt(dif[1,1])
-	}
+void ultimatch_axis_euclid(real scalar obs, real scalar axis_pos, real scalar var_pos, real scalar var_cnt)
+{	real matrix axis, data, vantage
+	pointer matrix P
+
+	st_view(axis=., (1,obs), (axis_pos))
+	st_view(data=., (1,obs), (var_pos..var_pos+var_cnt-1))
+	P = ultimatch_vantage(data)
+	vantage = *P[1,1]
+	axis[.,1] = sqrt(rowsum((data :- vantage) :^ 2))
+	st_matrix("r(vantage)", vantage)
 }
 
+void ultimatch_axis_haversine(real scalar obs, real scalar axis_pos, real scalar var_pos, real scalar radius)
+{	real matrix axis, xyz, data, vantage, v, meridian
+	real scalar height
+	pointer matrix P
 
-real matrix _ultimatchsingle(real matrix neighbor, real scalar between, real scalar draw)
+	st_view(axis=., (1,obs), (axis_pos))
+	st_view(xyz=., (1,obs), (var_pos..var_pos+2))
+	data = st_data((1,obs), (var_pos+3..var_pos+4)) :* pi() :/ 180
+	xyz[.,1] = radius :* cos(data[.,1]) :* cos(data[.,2])  // x
+	xyz[.,2] = radius :* cos(data[.,1]) :* sin(data[.,2])  // y
+	xyz[.,3] = radius :* sin(data[.,1])  // z
+	P = ultimatch_vantage(xyz)
+	vantage = *P[1,1]
+	if (hasmissing(vantage)) vantage = J(1, cols(vantage), sqrt(1/cols(vantage))) :* radius
+	axis[.,1] = sqrt(rowsum((xyz :- vantage) :^ 2))
+	height = sqrt(sum(vantage:^2))
+	v = vantage :/ height
+	meridian = (asin(v[1,3]/radius) * 180/pi(), atan2(v[1,2],v[1,1]) * 180/pi(), height-radius)
+	st_matrix("r(vantage)", vantage)
+	st_matrix("r(meridian)", meridian)
+}
+
+void ultimatch_axis_cosine(real scalar obs, real scalar axis_pos, real scalar var_pos, real scalar var_cnt)
+{	real matrix axis, data, length, vantage
+	pointer matrix P
+
+	st_view(axis=., (1,obs), (axis_pos))
+	st_view(data=., (1,obs), (var_pos..var_pos+var_cnt-1))
+	st_view(length=., (1,obs), (var_pos+var_cnt))
+	length[.,1] = sqrt(rowsum(data :^ 2))
+	data[.,.] = data :/ length  // unit vectors
+	P = ultimatch_vantage(data)
+	vantage = *P[1,1]
+	if (hasmissing(vantage)) vantage = J(1, cols(vantage), sqrt(1/cols(vantage)))
+	axis[.,1] = sqrt(rowsum((data :- vantage) :^ 2))
+	st_matrix("r(vantage)", vantage)
+}
+
+void ultimatch_axis_mahal(real scalar obs, real scalar axis_pos, real scalar var_pos, real scalar var_cnt)
+{	real matrix axis, data, dif, vantage, invcov
+	pointer matrix P
+	real scalar i
+
+	st_view(axis=., (1,obs), (axis_pos))
+	st_view(data=., (1,obs), (var_pos..var_pos+var_cnt-1))
+	P = ultimatch_vantage(data)
+	vantage = *P[1,1]
+	invcov = invsym(*P[1,3])
+	for (i = 1; i <= rows(axis); i++)
+	{	dif = data[i,.] :- vantage 
+		axis[i,1] = sqrt(dif * invcov * dif')
+	}
+	st_matrix("r(vantage)", vantage)
+	st_matrix("r(invcov)", invcov)
+}
+
+real matrix ultimatch_single(real matrix neighbor, real scalar between, real scalar draw)
 {	real matrix top, bot
 	real scalar i
 	if (between)
@@ -1639,4 +1773,62 @@ real matrix _ultimatchsingle(real matrix neighbor, real scalar between, real sca
 	return(neighbor[1..min((rows(neighbor),draw)),.])
 }
 
+pointer matrix ultimatch_covar(real matrix data)
+{	real matrix C, E
+	real scalar i, j
+
+	C = J(cols(data), cols(data), .)
+	E = mean(data)
+	for (i = 1; i <= cols(data); i++)
+	{	for (j = 1; j <= i; j++)
+		{	C[i,j] = sum((data[.,i] :- E[i]) :* (data[.,j] :- E[j])) / (rows(data)-1)
+			if (i != j)	C[j,i] = C[i,j]
+		}
+	}
+	return((&C, &E))
+}
+
+pointer matrix ultimatch_vantage(real matrix data)
+{	real matrix C, E, V, pd, ev
+	pointer matrix P
+	real scalar max_ev
+
+	P = ultimatch_covar(data)
+	C = *P[1,1]
+	E = *P[1,2]
+	symeigensystem(C, pd, ev)
+	max_ev = max(ev)
+	pd = select(pd, ev :== max_ev)[.,1]'
+	V = E :- pd :* (sqrt(max_ev) * 8)  // squared ev is sd
+	return((&V, &pd, &C))
+}
+
+// transform unbound meridians into normed meridians
+// not used yet
+void ultimatch_meridians(real matrix M) 
+{	real matrix n, m
+	M = mod(M, 360)
+	n = M :> 180
+	M = M :- n :* 360
+	M[.,1] = abs(M[.,1])
+	m = M[.,1] :> 90
+	M[.,1] = abs(M[.,1] :- m :* 180) :* (n[.,1] :* -2 :+ 1)
+}
+
+// percentile calculation
+// not used
+real matrix ultimatch_pctile(real matrix data, real rowvector steps)
+{	real matrix C, S, pos
+	real scalar i, j
+
+	C = J(cols(steps), cols(data), .)
+	pos = ceil(steps :/ 100 :* rows(data))
+	for (i = 1; i <= cols(data); i++)
+	{	S = sort(data[.,i],1)
+		for (j = 1; j <= cols(steps); j++)
+		{	C[j, i] = S[pos[1,j],1]
+		}
+	}
+	return (C)
+}
 end		

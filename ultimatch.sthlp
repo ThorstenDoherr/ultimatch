@@ -1,55 +1,63 @@
 {smcl}
-{* 02feb2021}{...}
+{* 23jan2025}{...}
 {hline}
 help for {hi:ultimatch}
 {hline}
 
 {title:Matching} - Nearest Neighbor, Radius, Coarsened Exact, Percentile Rank, Mahalanobis and Euclidean Distance Matching in one Package
 
-{p 8 15}{cmd:ultimatch} [{it:varlist}] [{it:if}] [{it:in}], {ul:t}reated({it:var}) [{ul:exa}ct({it:varlist})] [{ul:d}raw(#)] [{ul:ca}liper(#)]
-[{ul:su}pport] [{ul:si}ngle] [{ul:g}reedy] [{ul:b}etween] [{ul:ran}k] [{ul:rad}ius] [{ul:eu}clid] [{ul:m}ahalanobis] [{ul:co}py [{ul:f}ull]]
-[{ul:re}port({it:varlist}) [{ul:unm}atched]] [{ul:uni}t({it:varlist})] [{ul:exp}({it:string})] [{ul:l}imit({it:string})]{p_end}
+{p 8 15}{cmd:ultimatch} [{it:varlist}] [{it:if}] [{it:in}], {ul:t}reated({it:var}) [{ul:exa}ct({it:varlist})] [{ul:d}raw(#)] [{ul:ca}liper(#)] [{ul:earth}(#)]
+[{ul:su}pport] [{ul:si}ngle] [{ul:g}reedy] [{ul:b}etween] [{ul:ran}k] [{ul:rad}ius] [{ul:eu}clidean] [{ul:m}ahalanobis] [{ul:hav}ersine}] [{ul:cos}ine}]
+[{ul:co}py [{ul:f}ull]] [{ul:re}port({it:varlist}) [{ul:unm}atched]] [{ul:uni}t({it:varlist})] [{ul:exp}({it:string})] [{ul:l}imit({it:string})]{p_end}
 
 {title:Description}
 
 {p}{cmd:ultimatch} implements various matching methods. The matching mode depends on the options and parameters specified. If only one variable is
-specified, it is considered a score, which will be used for neigborhood or radius matching. In most cases this score is a predicted propensity
-score, but it can be any variable providing a distance relation. If more than one variable is specified, the {hi:Mahalanobis} or {hi:Euclidean} distance
-will be used to determine the surroundings for every treated observation. Another distance based method is the {hi:Percentile Rank} matching, which is
-activated by the option {cmd:rank}. Finally, by omitting any variable, {hi:Coarsened Exact} matching is assumed requiring the specification of the grouping
-variables in the {cmd:exact} option (see option {cmd:exact} for an alternative method to {hi:Coarsened Exact} matching).{p_end}
+specified, it is considered a score, which will be used for neighborhood or radius matching. In most cases this score is a predicted propensity score, but
+it can be any variable providing a distance relation. If more than one variable is specified, the {hi:Mahalanobis} or {hi:Euclidean} distance will be used
+to determine the surroundings for every treated observation. Specialized distance calculations for {hi:cosine} or {hi:haversine} distances can be enforced
+if the variable list fullfils the required specifications, i.e. latitude and longitude for the haversine distance. Another distance based method is the
+{hi:Percentile Rank} matching, which is activated by the option {cmd:rank}. Finally, by omitting any variable, {hi:Coarsened Exact} matching is assumed
+requiring the specification of the grouping variables in the {cmd:exact} option (see option {cmd:exact} for an alternative method to {hi:Coarsened Exact}
+matching).{p_end}
 
-{p}From now on, the term "counterfactuals" refers to non-treated observations that are suited to represent a specific treated observation - or a group
-of those in case of {hi:Coarsened Exact} matching - in a control group. {cmd:ultimatch} does not implement methods based on adjusting whole
-distributions like Entropy Balancing.{p_end}
+{p}From now on, the term "counterfactuals" refers to non-treated observations that are suited to represent a specific treated observation - or a group of
+those in case of {hi:Coarsened Exact} matching - in a control group. {cmd:ultimatch} does not implement methods based on adjusting whole distributions like
+Entropy Balancing.{p_end}
 
-{p}Besides score based matching {cmd:ultimatch} supports two different kinds of {hi:distance} matching: {hi:Mahalanobis} and {hi:Euclidean}
-distance. The Mahalanobis distance uses the inverted covariance matrix to normalize the distance vector between two points before calculating the
-Euclidean distance. Distance matching allows to find the closest neighbor or all neighbors within a radius in terms of the applied distance
-measurement. Usually, the neighborhood is determined by calculating the distance of a given point (observation) to all other points in the sample.
-The runtime of this process increases according to the product of the treated and the non-treated observations. {cmd:ultimatch} applies a heuristic
-approach that prevents this inflation of the runtime called {hi:Hypersphere Leeway} algorithm:{break}
-First, a distance score, Mahalanobis or Eucledian, is created for every observation to a reference point in the outskirts of the finite sample distribution
-of {it:varlist}. It is defined by the median center point plus the vector leading from the 75-percentile point to the 25-percentile point. By sorting the
-data by the score, it is guaranteed that observations with the same score are on the surface of a hypersphere centered on the outside point. The dimensions
-of the sphere are determined by {it:varlist}. Starting from a treated observation, moving along the score axis in both directions increases respectively
-decreases the radius of the corresponding spherical layer. For every not-treated observation visited, the actual Mahalonbis distance to the treated
-observation is calculated. All visited observations are confined within the ever-growing leeway between the deviating inner and outer spheres. The moment
-where the closest recorded distance to a non-treated observation is shorter than the distance of the treated observation to the nearest spherical layer,
-calculated as difference between the scores, all observations further down or up the score axis will return higher distances. They will always reside on
-shells that move further away from the selected treated observation.{break}To identify all neighbors within a given radius, the inner sphere is defined by
-the specified radius instead by the respectively closest observation. Every observation encountered within the inner spere belongs to the neighborhood. The
-neighborhood is complete when the surfaces of the three involved spheres cease to intersect.{p_end}
+{p}Besides score based matching {cmd:ultimatch} supports four different kinds of {hi:distance} matching: {hi:Mahalanobis}, {hi:Euclidean}, {hi:haversine} and
+{hi:cosine} distance. The Mahalanobis distance uses the inverted covariance matrix to normalize the distance vector between two points The haversine formula
+is used to calculate the great-circle distance between two points on a globe while the cosine distance is a measure of similarity between two vectors
+independent of the magnitudes.{break}
+Distance matching allows to find the closest neighbor or all neighbors within a radius in terms of the applied distance measurement. Usually, the
+neighborhood is determined by calculating the distance of a given point (observation) to all other points in the sample. The runtime of this process
+increases according to the product of the treated and the non-treated observations. {cmd:ultimatch} applies a heuristic approach that prevents this inflation
+of the runtime called {hi:Hypersphere Leeway} algorithm:{p_end}
+
+{p}First, a distance score, based on the chosen distance formula, is created for every observation to a vantage point in the outskirts of the finite
+sample distribution of {it:varlist}. It is defined by the centroid of the data shifted by the eigenvector with the highest eigenvalue of the covariance
+matrix multiplied by 4-times the square root of the eigenvalue (standard deviation). From this view point the projected cross-section of the data has
+the lowest profile. By sorting the data by the score, it is guaranteed that observations with the same score are on the surface of a hypersphere
+centered on this vantage point. The dimensions of the sphere are determined by {it:varlist}. Starting from a treated observation, moving along the
+score axis in both directions increases respectively decreases the radius of the corresponding spherical layer. For every not-treated observation
+visited, the actual distance to the treated observation is calculated. All visited observations are confined within the ever-growing leeway between the
+deviating inner and outer spheres. The moment where the closest recorded distance to a non-treated observation is shorter than the distance of the
+treated observation to the nearest spherical layer, calculated as difference between the scores, all observations further down or up the score axis
+will return higher distances. They will always reside on shells that move further away from the selected treated observation.{break} To identify all
+neighbors within a given radius, the inner sphere is defined by the specified radius instead by the respectively closest observation. Every observation
+encountered within the inner spere belongs to the neighborhood. The neighborhood is complete when the surfaces of the three involved spheres cease to
+intersect.{break} The {hi:haversine} and {hi:cosine} distances are derived from the {hi:Euclidean} distance after transforming the data
+accordingly.{p_end}
 
 {p}Score-based matching exploits the fact that with only one dimension, the spheres transform to points along the score axis and the
-closest point is immediately ascertainable. With only one dimension, a score can be objectively larger or smaller than another score allowing for the option 
+closest point is immediately ascertainable. With only one dimension, a score can be objectively larger or smaller than another score allowing for the option
 {cmd:between}, which eludes a definition in the multi-dimensional space.{p_end}
 
 {p}{hi:Percentile Rank} transformation can be applied on the score or the distance variables. A percentile rank is the percentage of distinct
 values that are equal or lower than it. As opposed to percentiles, variables with the same value always have the same percentile rank eliminating the
 arbitrariness of percentiles. The percentile ranks of {it:varlist} are used as a way to normalize the dimensions. The default distance is
 Euclidean, but it can be switched to Mahalanobis. In the case of score-based matching the transformation eliminates the first differenes of
-neighboring scores.{p_end}
+neighboring scores. You cannot apply this transformation for haversine or cosine distances.{p_end}
 
 {p}{cmd:ultimatch} considers non-treated observations with the same score or distance as one draw. It does not arbitrarily pick one of these
 observations unless the option {cmd:single} is specified. Therefore, it is required to introduce weights (see below) to keep the distributions
@@ -64,9 +72,10 @@ for the counterfactuals. For {hi:Coarsened Exact} matching, this variable just e
 observations. Usually there are no gaps in the enumeration of the identifier. Still, they can occur if the option {cmd:greedy} is applied especially in
 conjunction with {cmd:caliper}.{break}{hi:_match} is missing for non-matched observations.{p_end}
 
-{p 0 4}{hi:_distance}: contains the distance between an observation and the closest treated observation respectively the allocated treated
-observation, if {cmd:copy} is specified. It will not be created for {hi:Coarsened Exact} matching. It can be used to remove outlying matches manually,
-e.g. by percentiles.{break}{hi:_distance} is missing for non-matched observations.{p_end}
+{p 0 4}{hi:_distance}: for counterfactuals it contains the distance to the closest treated observation. For treated observations {hi:_distance} maximizes 
+the distance to all associated counterfactuals. This allows to observe the quality of a match even when the _match identifiers of the counterfactuals have
+been replaced by other, closer treated observations in case of not using the options {hi:greedy} or {hi:copy}.
+{break}{hi:_distance} is missing for non-matched observations. It will not be created for {hi:Coarsened Exact} matching.{p_end}
 
 {p 0 4}{hi:_weight}: contains the weight of the observation after matching. The weights balance the distribution of the counterfactuals according to
 the distribution of the treated. In geeneral, the weight of a treated observation is always 1, while the sum of the weights of its counterfactuals
@@ -75,19 +84,24 @@ for subsequent estimations. If options require to create copies of a treated obs
 1. These weights can be considered sampling weights ({hi:pweight}). {break}{hi:_weight} is missing for non-matched observations.{p_end}
 
 {p 0 4}{hi:_support}: marks observations with common support. It will be created when option {cmd:support} was specified.{break}
-{hi:_support} has the value 1 for observations with common support and 0 for observations without support. Only observations with common support will be matched.{p_end}
+{hi:_support} has the value 1 for observations with common support and 0 for observations without support. Only observations with common support will be
+matched.{p_end}
 
 {p 0 4}{hi:_copy}: contains a dummy designating observations that were copied (appended to the data) to avoid conflicts between treated observations
 over a mutual counterfactual. It will only be created when the option {cmd:copy} was specified. Only if option {cmd:full} was specified, treated will be
 among the copied observations.{break}{hi:_copy} is missing for non-matched observations, 1 for matched and appended and 0 for matched, original
 observations.{p_end}
 
-{p}{hi:WARNING: ultimatch will change the sort order of the data and, if canceled, the order of the variables.}{p_end}
+{p 0 4}{hi:_length}: in case of {hi:cosine} distance matching, the {it:varlist} will be interpreted as vector and normalized to length 1. The variable
+_length contains the length of the original data vector. Multiplying the variables of {it:varlist} with _length will restore them.{p_end}
+
+{p}{hi:WARNING: ultimatch will change the sort order of the data and, if canceled, the order of the variables.}
+{p_end}
 
 {p}{hi:Performance: The algorithm relies heavily on sorting. It is advised to rather drop unused observations than filtering them by {it:if} or {it:in}.}
 {p_end}
 
-{p}{hi:HINT: ultimatch can also be used to identfiy geographic neighborhood relations.}{p_end}
+{p}{hi:HINT: ultimatch can also be used to identfiy geographic neighborhood relations using the haversine option.}{p_end}
 
 {title:Options}
 
@@ -117,15 +131,34 @@ below).{p_end}
 {p 0 4}{ul:rad}ius activates radius matching for score-based and distance-based matching.
 
 {p 0 4}{ul:ran}k activates {hi:Percentile Rank} transformation. In case of distance-based matching the Euclidean distance will be used by default.
-With the option {cmd:mahalanobis} the distance calculation can be switched to {hi:Mahalanobis} distance.{p_end}
+With the option {cmd:mahalanobis} the distance calculation can be switched to {hi:Mahalanobis} distance. This option is incompatible with
+{hi:haversine} and {hi:cosine} distance matching.{p_end}
 
-{p 0 4}{ul:eu}clid can be applied to switch to Euclidean distance calculation. This is the default setting in case
+{p 0 4}{ul:eu}clidean can be applied to switch to Euclidean distance calculation. This is the default setting in case
 of {hi:Percentile Rank} transformation. This option is {hi:not} supported by {hi:Coarsened Exact} and score-based matching.{p_end}
 
 {p 0 4}{ul:m}ahalanobis can be applied to switch to Mahalanobis distance calculation. This is the default setting for distance-based matching. This
 option is {hi:not} supported by {hi:Coarsened Exact} and score-based matching.{p_end}
 
-{p 0 4}{ul:b}etween searches for higher and lower ranked neighbours independently. The draw option
+{p 0 4}{ul:hav}ersine can be applied if the two variables of {it:varlist} describe geographic coordinates. The first variable has to denote the
+{hi:latitude} in degrees between -90 and 90, while the second variable contains the {hi:longitude} between -180 and 180 degrees. Even though any values are
+be valid, you should heed this convention. The haversine distance is usually applied on geocoded data to identify the spatial neighborhood.{p_end}
+
+{p 0 4}{ul:earth}({it:real}) defines the radius for the {hi:haversine} distance. The default radius is 6371 in kilometers. You can change it to
+accommodate a different unit of measurement, i.e. miles or meter, or a different planet, i.e 1184 (Pluto) or 69173 (Jupiter). If you use a
+{hi:caliper} adjust it accordingly.{p_end}
+
+{p 0 4}{ul:cos}ine distance is typically applied on variables describing a vector usually composed of probabilities or indicators in the same
+continuous range, i.e. TF-IDF vectors. The cosine similarity is independent of the magnitude of the vectors as it only measures the cosine of the
+angles between the vectors. Null vectors are excluded as they have no direction.{break}
+The cosine {hi:distance} is defined in the range of [0,2]: 0 means congruency, 1 stands for orthogonality and 2 for the opposite direction. The cosine
+{hi:similarity} (range [-1,1]) equals 1 - _distance.{break}
+{hi:Warning:} the variables in varlist are considered a row vectors, which will be normalized to a length of 1. Because these vectors are usually
+very wide, the the original values will be overwriten to save memory space. Their datatype will be changed to double. The length of the original
+vector can be found in the variable {hi:_length}. The original values can be restored by multiplication with _length.{break}
+{p_end}
+
+{p 0 4}{ul:b}etween searches for higher and lower ranked neighbors independently. The draw option
 limits both directions separately. It is only supported by score-based matching.{p_end}
 
 {p 0 4}{ul:g}reedy draws without replacement. The treated observation with the lowest distance will claim the non-treated observations. Treated
@@ -134,7 +167,7 @@ observations. This may initiate a displacement cascade until all treated observa
 claim given the competition. It is strongly advised to apply {cmd:greedy} together with a reasonable {cmd:caliper}. It is {hi:not} supported by
 {hi:Coarsened Exact} and {hi:Radius} matching.{p_end}
 
-{p 0 4}{ul:si}ngle dismisses the default behaviour of considering all observations with the same score or distance as one observation regarding the
+{p 0 4}{ul:si}ngle dismisses the default behavior of considering all observations with the same score or distance as one observation regarding the
 draw limit. Every observation will be counted towards the draw limit. The counterfactuals are randomly drawn within in groups of equal scores or
 distances. It is {hi:not} supported by {hi:Radius} and {hi:Coarsened Exact} matching as they are not restricted to a specific number of
 counterfactuals.{p_end}
@@ -183,14 +216,15 @@ periods.{p_end}
 {p}{hi:ultimatch} reports the treated and control statistics in separate columns. If common {cmd:support} is not enforced, all valid observations
 without missings in {it:varlist} and variables specified in the {cmd:exact} and {cmd:limit} option are considered supported. Potential exclusions
 defined in the option {cmd:exp} are not regarded. If {cmd:copy} is specified, there will be clustering caused by the copied observations. In
-addition, there can be intrinsical clustering of the specified units (see option {cmd:unit}), for example if the same unit is drawn for different time
-periods. The row {it:Clustered} in the output designates the number of observations belonging to a cluster. The row {it:Clusters} accomodates the
+addition, there can be intrinsical clusters of the specified units (see option {cmd:unit}), for example if the same unit is drawn for different time
+periods. The row {it:Clustered} in the output designates the number of observations belonging to a cluster. The row {it:Clusters} accommodates the
 number of different clusters (the size of the cluster aggregate). If {cmd:report} variables are specified, the reported standard errors are clustered
 accordingly. The {cmd:unmatched} standard errors are only clustered, if {cmd:unit} is specified.{p_end}
 {p}Additionally, the Standardized Differences in Means ({hi:SDM}) according to {it:Hedge's g} (1981) are reported. An SDM below 0.2 constitutes a
 "small" difference (Cohen, 1988). In praxis, the effect size should be {hi:well below} that value.{p_end}
 {p}All reported statistics are returned in the matrix {hi:r(match)}. Furthermore, the number of computational steps is returned in {hi:r(comp)} to
-assess the complexity of the matching.{p_end}
+assess the complexity of the matching. For distance based matching the vantage point is returned in the matrix {hi:r(vantage)}. In case of the
+{hi:haversine} distance, the corresponding geographical coordinates and the height over ground are returned in {hi:r(meridian)}. {p_end}
 
 {title:Example 1}
 
@@ -360,7 +394,44 @@ as a second regression on the matched data suggests.{p_end}
     */ plotregion(fcolor(white) lcolor(white) ifcolor(white) ilcolor(white))
 {text}
 
+{title:Example 3}
+
+{p}This example shows the effect of cosine distance matching. As the original variables will always be normalized, they are restored with
+the generated _length variable.
+{p_end}
+
+{p}{hi:Copy+paste} into a do file!{p_end}
+{inp}
+    clear
+    set obs 500
+    gen x = invnorm(uniform())
+    gen y = invnorm(uniform())
+    gen byte treated = _n <= 250
+    ultimatch x y, treated(treated) report(x y) copy full cosine
+    replace x = x*_length  // restoring original value
+    replace y = y*_length  // restoring original value
+    sum _match
+    local max = r(max)
+    local graph = ""
+    forvalue i = 1/`max' {
+    local graph = "`graph' (line y x if _match == `i', lc(gs14))"
+    }
+    twoway /*
+    */ (scatter y x if treated == 0, msize(vsmall) msymbol(circle) mcolor(black)) /*
+    */ (scatter y x if treated == 1, msize(vsmall) msymbol(circle) mcolor(red)) /*
+    */ `graph', /*
+    */ xline(0, lcolor(ltblue)) yline(0, lcolor(ltblue)) /*
+    */ ytitle(Y) ytitle(, size(zero) color(white) orientation(horizontal)) /*
+    */ ylabel(none, nogrid) xlabel(none, nogrid) xtitle(X) xtitle(, size(zero)) legend(off) /*
+    */ xsize(4) ysize(4) graphregion(margin(0) fcolor(white) lcolor(white) ifcolor(white) ilcolor(white)) /*
+    */ plotregion(fcolor(white) lcolor(white) ifcolor(white) ilcolor(white))
+{text}
+
 {title:Update History}
+
+{p 0 11}{hi:2024.12.02} Better vantage point calculation based on the principal direction of the data.{break}
+Added {hi:cosine} distance based matching.{break}
+Added {hi:haversine} distance based matching using geographical coordinates (latitude and longitude).{p_end}
 
 {p 0 11}{hi:2021.02.01} Distance-based matching now supports the {cmd:draw} option.{break}
 Matching results can be reproduced with {cmd:set seed}.{break}
