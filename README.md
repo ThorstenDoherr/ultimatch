@@ -12,7 +12,7 @@ STATA
 
 ## Version history
 
-2024.02.12
+2024.12.02
 * Better vantage point calculation using the principal direction of the data for distance based matching.
 * Added cosine distance based matching.
 * Added haversine distance based matching using geographical coordinates (latitude and longitude).
