@@ -12,6 +12,9 @@ STATA
 
 ## Version history
 
+2025.02.20
+* Fixed a bug where omitting the draw parameter for score based matching would lead to ignoring draw limit.
+
 2024.12.02
 * Better vantage point calculation using the principal direction of the data for distance based matching.
 * Added cosine distance based matching.

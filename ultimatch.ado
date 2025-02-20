@@ -1,4 +1,4 @@
-// 2024.12.02 \\
+// 2025.02.20 \\
 cap program drop ultimatch
 program define ultimatch, rclass
 	version 9.0
@@ -270,7 +270,7 @@ program define ultimatch, rclass
 	}
 	if "`limit'" != "" | `rank' {
 		local vars = ""
-		local range = ""
+		local ranges = ""
 		local i = 1
 		local var = word("`limit'", `i')
 		while "`var'" != "" {
@@ -279,7 +279,6 @@ program define ultimatch, rclass
 				di as error `"invalid limitation variable `var'"'
 				error 999
 			}
-			local j = `j'+1
 			local vars = "`vars' `var'"
 			local i = `i'+1
 			local var = word("`limit'", `i')
@@ -358,6 +357,7 @@ program define ultimatch, rclass
 	else {
 		qui gen byte `cell' = 1 in 1/`N'
 	}
+	local draw = max(`draw', 1)
 	if "`method'" == "Distance" {
 		qui gen long _match = .
 		qui gen double _weight = .
@@ -403,7 +403,6 @@ program define ultimatch, rclass
 		}
 		local varcnt = wordcount("`distvars'")
 		local convert = ""
-		local draw = max(`draw', 1)
 		local calipso = `caliper'
 		local diameter = 2*`earth'
 		if `rank' {

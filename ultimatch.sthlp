@@ -429,6 +429,8 @@ the generated _length variable.
 
 {title:Update History}
 
+{p 0 11}{hi:2025.02.20} Fixed a bug where omitting the draw parameter for score based matching would lead to ignoring draw limit.{p_end}
+
 {p 0 11}{hi:2024.12.02} Better vantage point calculation based on the principal direction of the data.{break}
 Added {hi:cosine} distance based matching.{break}
 Added {hi:haversine} distance based matching using geographical coordinates (latitude and longitude).{p_end}
