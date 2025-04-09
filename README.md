@@ -12,10 +12,13 @@ STATA
 
 ## Version history
 
-2025.02.20
+2025.04.09
+* Fixed a bug where the **exp** and **limit** options do not work in very large datasets.
+
+2025.02.20 (ssc repository version)
 * Fixed a bug where omitting the draw parameter for score based matching would lead to ignoring draw limit.
 
-2024.12.02
+2024.12.02 (ssc repository version)
 * Better vantage point calculation using the principal direction of the data for distance based matching.
 * Added cosine distance based matching.
 * Added haversine distance based matching using geographical coordinates (latitude and longitude).

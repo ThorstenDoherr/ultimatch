@@ -1,8 +1,8 @@
-// 2025.02.20 \\
+// 2025.04.09 \\
 cap program drop ultimatch
 program define ultimatch, rclass
 	version 9.0
-	syntax [varlist(default=none)] [if] [in], [EXAct(varlist)] [CAliper(real -1)] [Draw(integer -1)] [EXP(string)] [Limit(string)] Treated(varname) [REport(varlist))] [UNIt(varlist)] [EARTH(real 6371)] [Between] [Greedy] [SIngle] [SUpport] [UNMatched] [COpy] [Full] [RANk] [EUclidean] [Mahalanobis] [HAVersine] [COSine] [RADius]
+	syntax [varlist(default=none)] [if] [in], Treated(varname) [EXAct(varlist)] [CAliper(real -1)] [Draw(integer -1)] [EXP(string)] [Limit(string)] [REport(varlist))] [UNIt(varlist)] [EARTH(real 6371)] [Between] [Greedy] [SIngle] [SUpport] [UNMatched] [COpy] [Full] [RANk] [EUclidean] [Mahalanobis] [HAVersine] [COSine] [RADius]
 	tempvar axis tr mark cell nouse base cluster claim lock cnt trcnt ctcnt miss order
 	tempname table cell matrix temp row
 	matrix `matrix' = (.)
@@ -61,7 +61,7 @@ program define ultimatch, rclass
 			local caliper = 1
 		}
 		else {
-			di as error "if varlist is empty, exact option has to be specified"
+			di as error "exact option has to be specified if varlist is empty"
 			error 999
 		}
 	}
@@ -145,12 +145,12 @@ program define ultimatch, rclass
 			di as error "_distance is already defined"
 			error 999
 		}
-		if `greedy' == 0 {
-			cap confirm var _copy
-			if _rc == 0 {
-				di as error "_copy is already defined"
-				error 999
-			}
+	}
+	if `copy' {
+		cap confirm var _copy
+		if _rc == 0 {
+			di as error "_copy is already defined"
+			error 999
 		}
 	}
 	if `support' {
@@ -169,53 +169,70 @@ program define ultimatch, rclass
 	}
 	di as text "`matching'"
 	return local matching = "`matching'"
-	if "`exp'" != "" {
-		local exp = "`exp' "
+	if `"`exp'"' != "" {
+		local exp = subinstr(`"`exp'"',`"'"',`"""',.)
+		local exp = `"`exp' "'
 		local cmd = ""
 		local var = ""
-		local prev = ""
-		local len = length("`exp'")
+		local quote = 0
+		local len = length(`"`exp'"')
 		forvalue i = 1/`len' {
-			local chr = substr("`exp'",`i',1)
-			if "`var'" == "" {
-				if regexm("`chr'","[a-zA-Z._]") {
-					local var = "`chr'"
+			local chr = substr(`"`exp'"',`i',1)
+			if `"`chr'"' == "" {
+				local chr = char(1)
+			}
+			if `quote' {
+				local cmd = `"`cmd'`chr'"'
+				if `"`chr'"' == `"""' {
+					local quote = 0
+				}
+			}
+			else if `"`var'"' == "" {
+				if regexm(`"`chr'"',"[a-zA-Z._]") {
+					local var = `"`chr'"'
 				}
 				else {
-					local cmd = "`cmd'`chr'"
+					local cmd = `"`cmd'`chr'"'
+					if `"`chr'"' == `"""' {
+						local quote = 1
+					}
 				}
 			}
 			else {
-				if regexm("`chr'","[a-zA-Z._0-9]") {
-					local var = "`var'`chr'"
+				if regexm(`"`chr'"',"[a-zA-Z._0-9]") {
+					local var = `"`var'`chr'"'
 				}
 				else if "`chr'" == "(" {
-					local cmd = "`cmd'`var'`chr'"
+					local cmd = `"`cmd'`var'`chr'"'
 					local var = ""
 				}
 				else {
-					if regexm("`var'","t\..+") {
-						local var = substr("`var'",3,.)
+					if regexm(`"`var'"',"t\..+") {
+						local var = substr(`"`var'"',3,.)
 						cap confirm var `var'
 						if _rc == 0 {
-							local var = "`var'[t]"
+							local var = `"`var'[t]"'
 						}
 					}
 					else {
 						cap confirm var `var'
 						if _rc == 0 {
-							local var = "`var'[c]"
+							local var = `"`var'[c]"'
 						}
 					}
-					local cmd = "`cmd'`var'`chr'"
+					local cmd = `"`cmd'`var'`chr'"'
 					local var = ""
+					if `"`chr'"' == `"""' {
+						local quote = 1
+					} 
 				}
 			}
 		}
+		local cmd = subinstr(`"`cmd'"',char(1),char(32),.)
 		local test = subinstr(subinstr(`"`cmd'"',"[c]","[2]",.),"[t]","[1]",.)
 		cap local test = `test'
 		if _rc != 0 {
-			di as error `"invalid expression: `exp'"'
+			di as error "invalid expression: " `"`exp'"'
 			error 999
 		}
 	}
@@ -733,9 +750,9 @@ void ultimatch_neighbor(real scalar caliper, real scalar single, real scalar dra
 {	real matrix D, neighbor, nb, miss
 	real scalar hood, top, bot, tgo, bgo, tdif, bdif, tprev, bprev, tcnt, bcnt, cnt, rows
 	real scalar i, j, w, reset, claim, idif
-	real scalar match, obs, uselimit, usecmd
-	string scalar limit, cmd, explimit, expcmd, exp, str
-	real scalar comp
+	real scalar match, obs, comp
+	string matrix expr, cond
+	string scalar str
 	
 	obs = st_nobs()
 	for (i=1; i <= obs; i++)
@@ -750,21 +767,17 @@ void ultimatch_neighbor(real scalar caliper, real scalar single, real scalar dra
 		return
 	}
 	st_view(D=.,(1,obs),(2..8)) // score:1, cell:2, treated:3, match:4, distance:5, weight:6, claim:7
-	limit = st_local("limit")
-	cmd = st_local("cmd")
-	uselimit = 0
-	usecmd = 0
-	if (limit != "")
-	{	limit = "local limitok = "+limit
-		uselimit = 1
-	}
-	if (cmd != "")
-	{	cmd = "local cmdok = "+cmd
-		usecmd = 1
-	}
 	if (greedy)
 	{	copy = 0
 	}
+	expr = J(0,1,"")
+	if (st_local("limit") != "")
+	{	expr = expr \ "local cond = "+st_local("limit")
+	}
+	if (st_local("cmd") != "")
+	{	expr = expr \ "local cond = "+st_local("cmd")
+	}
+	cond = expr
 	comp = 0
 	miss = J(1,4,.)
 	neighbor = J(obs,3,0)
@@ -787,11 +800,11 @@ void ultimatch_neighbor(real scalar caliper, real scalar single, real scalar dra
 		else
 		{	match++
 		}
-		if (uselimit)
-		{	explimit = subinstr(limit,"[t]","["+strofreal(i)+"]")
-		}
-		if (usecmd)
-		{	expcmd = subinstr(cmd,"[t]","["+strofreal(i)+"]")
+		if (rows(cond) > 0)
+		{	str = "["+strofreal(i,"%18.0f")+"]"
+			for (j = 1; j <= rows(cond); j++)
+			{	cond[j,1] = subinstr(expr[j,1],"[t]",str)
+			}
 		}
 		top = i
 		bot = i
@@ -831,22 +844,8 @@ void ultimatch_neighbor(real scalar caliper, real scalar single, real scalar dra
 				if (greedy & tdif >= D[top,5])
 				{	continue
 				}
-				if (uselimit | usecmd)
-				{	str = strofreal(top)
-					if (uselimit)
-					{	exp = subinstr(explimit,"[c]","["+str+"]")
-						stata(exp,1,1)
-						if (st_local("limitok") != "1")
-						{	continue
-						}
-					}
-					if (usecmd)
-					{	exp = subinstr(expcmd,"[c]","["+str+"]")
-						stata(exp,1,1)
-						if (st_local("cmdok") != "1")
-						{	continue
-						}
-					}
+				if (rows(cond) > 0 & ultimatch_reject(top, cond))
+				{	continue
 				}
 				break
 			}
@@ -878,22 +877,8 @@ void ultimatch_neighbor(real scalar caliper, real scalar single, real scalar dra
 				if (greedy & bdif >= D[bot,5])
 				{	continue
 				}
-				if (uselimit | usecmd)
-				{	str = strofreal(bot)
-					if (uselimit)
-					{	exp = subinstr(explimit,"[c]","["+str+"]")
-						stata(exp,1,1)
-						if (st_local("limitok") != "1")
-						{	continue
-						}
-					}
-					if (usecmd)
-					{	exp = subinstr(expcmd,"[c]","["+str+"]")
-						stata(exp,1,1)
-						if (st_local("cmdok") != "1")
-						{	continue
-						}
-					}
+				if (rows(cond) > 0 & ultimatch_reject(bot, cond))
+				{	continue
 				}
 				break
 			}
@@ -1071,10 +1056,9 @@ void ultimatch_radius(real scalar varcnt, string scalar matrix_name, real scalar
 {	real matrix D, M, C, neighbor, difvec
 	real scalar hood, top, bot, dif, dist, distance
 	real scalar i, j, w, idif
-	real scalar match, obs, uselimit, usecmd
-	string scalar limit, cmd, explimit, expcmd, exp, str
-	real scalar comp
-	real scalar convert
+	real scalar match, obs, comp, convert
+	string matrix expr, cond
+	string scalar str
 	
 	obs = st_nobs()
 	for (i=1; i <= obs; i++)
@@ -1096,18 +1080,14 @@ void ultimatch_radius(real scalar varcnt, string scalar matrix_name, real scalar
 	{	convert = 1
 		C = st_matrix(matrix_name)
 	}
-	limit = st_local("limit")
-	cmd = st_local("cmd")
-	uselimit = 0
-	usecmd = 0
-	if (limit != "")
-	{	limit = "local limitok = "+limit
-		uselimit = 1
+	expr = J(0,1,"")
+	if (st_local("limit") != "")
+	{	expr = expr \ "local cond = "+st_local("limit")
 	}
-	if (cmd != "")
-	{	cmd = "local cmdok = "+cmd
-		usecmd = 1
+	if (st_local("cmd") != "")
+	{	expr = expr \ "local cond = "+st_local("cmd")
 	}
+	cond = expr
 	comp = 0
 	neighbor = J(obs,2,.)
 	match = 0
@@ -1120,11 +1100,11 @@ void ultimatch_radius(real scalar varcnt, string scalar matrix_name, real scalar
 		if (D[i,3] == 0)
 		{	continue
 		}
-		if (uselimit)
-		{	explimit = subinstr(limit,"[t]","["+strofreal(i)+"]")
-		}
-		if (usecmd)
-		{	expcmd = subinstr(cmd,"[t]","["+strofreal(i)+"]")
+		if (rows(cond) > 0)
+		{	str = "["+strofreal(i,"%18.0f")+"]"
+			for (j = 1; j <= rows(cond); j++)
+			{	cond[j,1] = subinstr(expr[j,1],"[t]",str)
+			}
 		}
 		match++
 		top = i
@@ -1146,23 +1126,6 @@ void ultimatch_radius(real scalar varcnt, string scalar matrix_name, real scalar
 			{	continue
 			}
 			comp++
-			if (uselimit | usecmd)
-			{	str = strofreal(top)
-				if (uselimit)
-				{	exp = subinstr(explimit,"[c]","["+str+"]")
-					stata(exp,1,1)
-					if (st_local("limitok") != "1")
-					{	continue
-					}
-				}
-				if (usecmd)
-				{	exp = subinstr(expcmd,"[c]","["+str+"]")
-					stata(exp,1,1)
-					if (st_local("cmdok") != "1")
-					{	continue
-					}
-				}
-			}
 			if (distance)
 			{	if (convert)
 				{	difvec = M[i,.] :- M[top,.]
@@ -1172,13 +1135,19 @@ void ultimatch_radius(real scalar varcnt, string scalar matrix_name, real scalar
 				{	dist = sqrt(sum((M[i,.]:-M[top,.]):^2))
 				}
 				if (dist <= caliper)
-				{	hood++
+				{	if (rows(cond) > 0 & ultimatch_reject(top, cond))
+					{	continue						
+					}
+					hood++
 					neighbor[hood,1] = top
 					neighbor[hood,2] = dist
 				}
 			}
 			else
-			{	hood++
+			{	if (rows(cond) > 0 & ultimatch_reject(top, cond))
+				{	continue						
+				}
+				hood++
 				neighbor[hood,1] = top
 				neighbor[hood,2] = dif
 			}
@@ -1199,23 +1168,6 @@ void ultimatch_radius(real scalar varcnt, string scalar matrix_name, real scalar
 			{	continue
 			}
 			comp++
-			if (uselimit | usecmd)
-			{	str = strofreal(bot)
-				if (uselimit)
-				{	exp = subinstr(explimit,"[c]","["+str+"]")
-					stata(exp,1,1)
-					if (st_local("limitok") != "1")
-					{	continue
-					}
-				}
-				if (usecmd)
-				{	exp = subinstr(expcmd,"[c]","["+str+"]")
-					stata(exp,1,1)
-					if (st_local("cmdok") != "1")
-					{	continue
-					}
-				}
-			}
 			if (distance)
 			{	if (convert)
 				{	difvec = M[i,.] :- M[bot,.]
@@ -1225,13 +1177,19 @@ void ultimatch_radius(real scalar varcnt, string scalar matrix_name, real scalar
 				{	dist = sqrt(sum((M[i,.]:-M[bot,.]):^2))
 				}
 				if (dist <= caliper)
-				{	hood++
+				{	if (rows(cond) > 0 & ultimatch_reject(bot, cond))
+					{	continue						
+					}
+					hood++
 					neighbor[hood,1] = bot
 					neighbor[hood,2] = dist
 				}
 			}
 			else
-			{	hood++
+			{	if (rows(cond) > 0 & ultimatch_reject(bot, cond))
+				{	continue						
+				}
+				hood++
 				neighbor[hood,1] = bot
 				neighbor[hood,2] = dif
 			}
@@ -1322,11 +1280,10 @@ void ultimatch_radius(real scalar varcnt, string scalar matrix_name, real scalar
 void ultimatch_distance(real scalar varcnt, string scalar matrix_name, real scalar caliper, real scalar single, real scalar draw, real scalar greedy, real scalar copy)
 {	real matrix D, M, C, difvec, miss, neighbor, nb
 	real scalar hood, top, bot, dist, nearest, pos, dif, w, reset
-	real scalar i, j, match, obs, uselimit, usecmd, idif
-	real scalar free, count
-	string scalar limit, cmd, explimit, expcmd, exp, str
-	real scalar comp
-	real scalar convert
+	real scalar i, j, match, obs, idif
+	real scalar free, count, comp, convert
+	string matrix expr, cond
+	string scalar str
 	
 	obs = st_nobs()
 	for (i=1; i <= obs; i++)
@@ -1347,21 +1304,17 @@ void ultimatch_distance(real scalar varcnt, string scalar matrix_name, real scal
 	{	convert = 1
 		C = st_matrix(matrix_name)
 	}
-	limit = st_local("limit")
-	cmd = st_local("cmd")
-	uselimit = 0
-	usecmd = 0
-	if (limit != "")
-	{	limit = "local limitok = "+limit
-		uselimit = 1
-	}
-	if (cmd != "")
-	{	cmd = "local cmdok = "+cmd
-		usecmd = 1
-	}
 	if (greedy)
 	{	copy = 0
 	}
+	expr = J(0,1,"")
+	if (st_local("limit") != "")
+	{	expr = expr \ "local cond = "+st_local("limit")
+	}
+	if (st_local("cmd") != "")
+	{	expr = expr \ "local cond = "+st_local("cmd")
+	}
+	cond = expr
 	comp = 0
 	miss = J(1,4,.)
 	neighbor = J(obs,2,0)
@@ -1384,11 +1337,11 @@ void ultimatch_distance(real scalar varcnt, string scalar matrix_name, real scal
 		else
 		{	match++
 		}
-		if (uselimit)
-		{	explimit = subinstr(limit,"[t]","["+strofreal(i)+"]")
-		}
-		if (usecmd)
-		{	expcmd = subinstr(cmd,"[t]","["+strofreal(i)+"]")
+		if (rows(cond) > 0)
+		{	str = "["+strofreal(i,"%18.0f")+"]"
+			for (j = 1; j <= rows(cond); j++)
+			{	cond[j,1] = subinstr(expr[j,1],"[t]",str)
+			}
 		}
 		top = i
 		bot = i
@@ -1418,23 +1371,6 @@ void ultimatch_distance(real scalar varcnt, string scalar matrix_name, real scal
 				{	break
 				}
 				comp++
-				if (uselimit | usecmd)
-				{	str = strofreal(top)
-					if (uselimit)
-					{	exp = subinstr(explimit,"[c]","["+str+"]")
-						stata(exp,1,1)
-						if (st_local("limitok") != "1")
-						{	break
-						}
-					}
-					if (usecmd)
-					{	exp = subinstr(expcmd,"[c]","["+str+"]")
-						stata(exp,1,1)
-						if (st_local("cmdok") != "1")
-						{	break
-						}
-					}
-				}
 				if (greedy & D[top,4] == match)
 				{	dist = D[top,5]
 					D[top,4..7] = miss
@@ -1451,16 +1387,21 @@ void ultimatch_distance(real scalar varcnt, string scalar matrix_name, real scal
 					{	break
 					}
 				}
-				if (dist < nearest)
-				{	hood = free
-					neighbor[hood,1] = top
-					neighbor[hood,2] = dist				
-					nearest = dist
-				}
-				else if (dist == nearest)
-				{	hood++
-					neighbor[hood,1] = top
-					neighbor[hood,2] = dist				
+				if (dist <= nearest)
+				{	if (rows(cond) > 0 & ultimatch_reject(top, cond))
+					{	break						
+					}
+					if (dist < nearest)
+					{	hood = free
+						neighbor[hood,1] = top
+						neighbor[hood,2] = dist				
+						nearest = dist
+					}
+					else
+					{	hood++
+						neighbor[hood,1] = top
+						neighbor[hood,2] = dist				
+					}
 				}
 				break
 			}
@@ -1485,23 +1426,6 @@ void ultimatch_distance(real scalar varcnt, string scalar matrix_name, real scal
 				{	break
 				}
 				comp++
-				if (uselimit | usecmd)
-				{	str = strofreal(bot)
-					if (uselimit)
-					{	exp = subinstr(explimit,"[c]","["+str+"]")
-						stata(exp,1,1)
-						if (st_local("limitok") != "1")
-						{	break
-						}
-					}
-					if (usecmd)
-					{	exp = subinstr(expcmd,"[c]","["+str+"]")
-						stata(exp,1,1)
-						if (st_local("cmdok") != "1")
-						{	break
-						}
-					}
-				}
 				if (greedy & D[bot,4] == match)
 				{	dist = D[bot,5]
 					D[bot,4..7] = miss
@@ -1518,16 +1442,21 @@ void ultimatch_distance(real scalar varcnt, string scalar matrix_name, real scal
 					{	break
 					}
 				}
-				if (dist < nearest)
-				{	hood = free
-					neighbor[hood,1] = bot
-					neighbor[hood,2] = dist				
-					nearest = dist
-				}
-				else if (dist == nearest)
-				{	hood++
-					neighbor[hood,1] = bot
-					neighbor[hood,2] = dist				
+				if (dist <= nearest)
+				{	if (rows(cond) > 0 & ultimatch_reject(bot, cond))
+					{	break						
+					}
+					if (dist < nearest)
+					{	hood = free
+						neighbor[hood,1] = bot
+						neighbor[hood,2] = dist				
+						nearest = dist
+					}
+					else
+					{	hood++
+						neighbor[hood,1] = bot
+						neighbor[hood,2] = dist				
+					}
 				}
 				break
 			}
@@ -1670,6 +1599,21 @@ void ultimatch_distance(real scalar varcnt, string scalar matrix_name, real scal
 	st_numscalar("r(match)", match)
 	st_numscalar("r(comp)", comp)
 	return
+}
+
+real scalar ultimatch_reject(index, string matrix cond)
+{	real scalar i
+	string scalar str, exp
+
+	str = "["+strofreal(index,"%18.0f")+"]"
+	for (i = 1; i <= rows(cond); i++)
+	{	exp = subinstr(cond[i,1], "[c]", str)
+		stata(exp, 1, 1)
+		if (st_local("cond") != "1")
+		{	return(1)
+		}
+	}
+	return(0)
 }
 
 void ultimatch_copy(real scalar from)

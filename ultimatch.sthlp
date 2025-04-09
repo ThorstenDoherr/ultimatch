@@ -429,6 +429,8 @@ the generated _length variable.
 
 {title:Update History}
 
+{p 0 11}{hi:2025.04.09} Fixed a bug where the {cmd:exp} and {cmd:limit} options do not work in very large datasets.{p_end}
+
 {p 0 11}{hi:2025.02.20} Fixed a bug where omitting the draw parameter for score based matching would lead to ignoring draw limit.{p_end}
 
 {p 0 11}{hi:2024.12.02} Better vantage point calculation based on the principal direction of the data.{break}
