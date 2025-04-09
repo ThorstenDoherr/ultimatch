@@ -16,7 +16,7 @@ STATA
 * Fixed a bug where the **exp** and **limit** options do not work in very large datasets.
 
 2025.02.20 (ssc repository version)
-* Fixed a bug where omitting the draw parameter for score based matching would lead to ignoring draw limit.
+* Fixed a bug where omitting the draw parameter for score based matching would lead to ignoring the draw limit.
 
 2024.12.02 (ssc repository version)
 * Better vantage point calculation using the principal direction of the data for distance based matching.
