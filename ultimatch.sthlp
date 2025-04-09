@@ -122,11 +122,11 @@ the corresponding treated observation, therefore the term {cmd:exact}. This opti
 specified variables should be ordinal, categorical or binary. If this option is specified without a general {it:varlist} (a score or
 distance variables), {hi:Coarsened Exact} matching is assumed. In this case, the {hi:_match} variable enumerates the cells containing
 treated and non-treated observations in no specific order.{break}
-{hi:Hint:} Coarsened Exact matching can also be emulated by using a group variable based on the defined coarsened stratums as a score. In this case,
-missing values can be included. By applying a {cmd:caliper} below 1, e.g. 0.5, the {hi:Neighbor} matching will always draw
-counterfactuals within the stratum without requiring the {cmd:exact} option. All options of {hi:Neighbor} matching are available including
-{hi:single} for random assignment of counterfactuals and {cmd:copy} for direct associations with the treated observations (see example section
-below).{p_end}
+{hi:Hint:} Coarsened Exact matching can also be emulated by using a group variable based on the defined coarsened stratums as a score, which 
+allows for the inlcusion of missings (see {cmd:group} sub-command of {cmd:egen}). By applying a {cmd:caliper} below 1, e.g. 0.5, the {hi:Neighbor} 
+matching will always draw counterfactuals within the stratum without requiring the {cmd:exact} option. All options of {hi:Neighbor} matching are 
+available including {hi:single} for random assignment of counterfactuals and {cmd:copy} for direct associations with the treated observations (see 
+example section below).{p_end}
 
 {p 0 4}{ul:rad}ius activates radius matching for score-based and distance-based matching.
 
@@ -431,7 +431,7 @@ the generated _length variable.
 
 {p 0 11}{hi:2025.04.09} Fixed a bug where the {cmd:exp} and {cmd:limit} options do not work in very large datasets.{p_end}
 
-{p 0 11}{hi:2025.02.20} Fixed a bug where omitting the draw parameter for score based matching would lead to ignoring draw limit.{p_end}
+{p 0 11}{hi:2025.02.20} Fixed a bug where omitting the draw parameter for score based matching would lead to ignoring the draw limit.{p_end}
 
 {p 0 11}{hi:2024.12.02} Better vantage point calculation based on the principal direction of the data.{break}
 Added {hi:cosine} distance based matching.{break}
