@@ -1,16 +1,29 @@
 # ultimatch: counterfactual matching
 **ultimatch** implements various score and distance based matching methods, i.e. Nearest Neighbor, Radius, Coarsened Exact, Percentile Rank and Mahalanobis, Euclidean, Haversine and Cosine Distance Matching. It implements an efficient method for distance based matching preventing inflationary increment of the runtime. Matched observations are marked individually allowing interactions between treated and counterfactuals. Different methods can be combined to improve the results and/or to impose external requirements on the matched. Among other control variables, it creates mandatory weights to provide balanced matching results, preventing distortions caused by skewed counterfactual candidate distributions, e.g. overabundance of candidates with the same score or within  the same coarsened group. It can be used to identify geographic neighborhood relations using the haversine formula based on latitude and longitude.
 
+**syncmatch** is a wrapper for ultimatch to handle the intricacies of matching panel data, especially, when staggered treatment is involved. It synchronizes the cohorts of the treatment group with the control group.
+
+**syncevent** conducts a cohort-sensitive fixed effects event study for staggered or concurrent treatment using panel data matched with syncmatch.
+
 ## Prerequisites
 STATA
 
 ## Getting started
-* Copy ultimatch.ado and ultimatch.sthlp into your ADO file directory (typically c:\ado).
-* Call the help file within STATA: help ultimatch.
+* Copy all \*.ado and \*.sthlp files into your ADO file directory (typically c:\ado).
+* Call the respective help file within STATA.
 * Copy the provided examples from the help document into do-files and run them.
 * Adjust the templates in the examples to your needs until you you get the hang of it.
 
 ## Version history
+
+2026.09.02
+* Inital release of **syncmatch**
+* Initial relase of **syncevent**
+* New **perc** option allows to specify a percentile caliper applied after matching
+* Reporting of t-test is more convenient: **matched** & **unmatched** do not require specification of report variables
+* Report option uses a separate <b>\*</b> character as shortcut for the matching variables, i.e., <b>report(score \* fitness)</b>
+* System variable **_copy** is now 0 for matched original observations
+* New help file
 
 2025.04.09
 * Fixed a bug where the **exp** and **limit** options do not work in very large datasets.

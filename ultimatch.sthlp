@@ -632,7 +632,7 @@ cluster become treated to identify the neighbor agglomerations by matching count
 {marker history}{...}
 {title:Update History}
 
-{p 0 11}{hi:2026.08.31} new {help ultimatch##restrictions:perc} option allows to specify a percentile caliper applied after matching{break}
+{p 0 11}{hi:2026.08.31} New {help ultimatch##restrictions:perc} option allows to specify a percentile caliper applied after matching{break}
 Reporting of t-test is more convenient: {help ultimatch##reporting:matched} & {help ultimatch##reporting:unmatched} do not require
 specification of report variables{break}
 Report option uses a separate {cmd:*} character as shortcut for the matching variables, i.e., {cmd:report(score * fitness)}{break}
