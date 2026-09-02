@@ -1,15 +1,16 @@
-// 2025.04.09 \\
+// 2026.08.20 \\
 cap program drop ultimatch
 program define ultimatch, rclass
 	version 9.0
-	syntax [varlist(default=none)] [if] [in], Treated(varname) [EXAct(varlist)] [CAliper(real -1)] [Draw(integer -1)] [EXP(string)] [Limit(string)] [REport(varlist))] [UNIt(varlist)] [EARTH(real 6371)] [Between] [Greedy] [SIngle] [SUpport] [UNMatched] [COpy] [Full] [RANk] [EUclidean] [Mahalanobis] [HAVersine] [COSine] [RADius]
-	tempvar axis tr mark cell nouse base cluster claim lock cnt trcnt ctcnt miss order
+	syntax [varlist(default=none)] [if] [in], Treated(varname) [EXAct(varlist)] [CAliper(real -1)] [Perc(real -1)] [Draw(integer -1)] [EXP(string)] [Limit(string)] [REport(string))] [UNIt(varlist)] [EARTH(real 6371)] [Between] [Greedy] [SIngle] [SUpport] [UNMatched] [MATched] [COpy] [Full] [RANk] [EUclidean] [Mahalanobis] [HAVersine] [COSine] [RADius]
+	tempvar axis tr mark cell nouse base cluster claim lock cnt trcnt ctcnt miss tmp order
 	tempname table cell matrix temp row
 	matrix `matrix' = (.)
 	return matrix match = `matrix'
 	tokenize `"`varlist'"'
 	local copy = "`copy'"' != ""
 	local unmatched = "`unmatched'" != ""
+	local matched = "`matched'" != ""
 	local between = "`between'" != ""
 	local greedy = "`greedy'" != ""
 	local single = "`single'" != ""
@@ -21,8 +22,17 @@ program define ultimatch, rclass
 	local method = ""
 	local draw = cond(`draw' <= 0, ., `draw')
 	local caliper = cond(`caliper' < 0, ., `caliper')
+	local perc = cond(`perc' < 0, ., `perc')
 	if `greedy' & `copy' {
 		di as error "options greedy and copy are mutually exclusive"
+		error 999
+	}
+	if `perc' != . & (`perc' > 100 | `perc' <= 0) {
+		di as error "invalid percentile specification for option perc"
+		error 999
+	}
+	if `perc' != . & `copy' == 0 {
+		di as error "option perc requires specification of option copy"
 		error 999
 	}
 	local distance = ""
@@ -39,9 +49,25 @@ program define ultimatch, rclass
 		di as error "full is a sub-option of copy"
 		error 999
 	}
-	if `unmatched' & "`report'" == "" {
-		di as error "unmatched is a sub-option of report"
+	local report = trim(regexr(`" `report' "', " \* ", `" `*' "'))
+	if regexm(`" `report' "', " \* ") {
+		di as error "invalid report varlist"
 		error 999
+	}
+	if `"`report'"' != "" {
+		local list = ""
+		foreach v of varlist `report' {
+			local list = `"`list' `v'"'
+		}
+		local report = `"`list'"'
+		local list = ""
+	}
+	if (`unmatched' | `matched') & "`report'" == "" {
+		local report = `"`*'"'
+		if "`report'" == "" {
+			di as error "nothing to report"
+			error 999
+		}
 	}
 	if `"`1'"' != "" {
 		if `"`2'"' != "" {
@@ -53,8 +79,8 @@ program define ultimatch, rclass
 	}
 	if "`method'" == "" {
 		if `"`exact'"' != "" {
-			if  `draw' != . | `caliper' != . | `between' | `greedy' | `support' | `copy' | `rank' | `radius' | "`distance'" != "" | `"`limit'"' != "" | `"`exp'"' != "" {
-				di as error "coarsened exact mode does not support following options: draw, caliper, between, greedy, support, copy, rank, single, euclidean, mahalanobis, haversine, cosine, radius, limit, exp"
+			if  `draw' != . | `caliper' != . | `perc' != . | `between' | `greedy' | `support' | `copy' | `rank' | `radius' | "`distance'" != "" | `"`limit'"' != "" | `"`exp'"' != "" {
+				di as error "coarsened exact mode does not support following options: draw, caliper, perc, between, greedy, support, copy, rank, single, euclidean, mahalanobis, haversine, cosine, radius, limit, exp"
 				error 999
 			}
 			local draw = .
@@ -70,7 +96,7 @@ program define ultimatch, rclass
 		error 999
 	}
 	if "`method'" == "Score" & "`distance'" != "" {
-		di as error "score based matching does not support following options: euclid, mahalanobis, haversine, cosine"
+		di as error "score based matching does not support following options: euclidean, mahalanobis, haversine, cosine"
 		error 999
 	}
 	if `radius' & (`between' | `greedy' | `single' | `draw' != .) {
@@ -267,6 +293,7 @@ program define ultimatch, rclass
 			local varcnt = wordcount("`*'")
 			qui egen long `miss' = anycount(`*') if `nouse' == 0, values(0)
 			qui replace `nouse' = 9 if `miss' == `varcnt'
+			qui drop `miss'
 		}
 		local score = `"`1'"'
 	}
@@ -548,6 +575,25 @@ program define ultimatch, rclass
 			qui replace _copy = 1 in `obs1'/`obs2'
 			local clustered = 1
 		}
+		qui replace _copy = 0 if _copy == . & _match != .
+	}
+	if `perc' != . {
+		_pctile _distance if `tr' == 0, p(`perc')
+		return scalar perc = r(r1)
+		return scalar ptile = `perc'
+		local val1 = string(`perc',"%18.0g")
+		local val2 = string(r(r1),"%18.0g")
+		di as text "{res:`val1'%} percentile caliper: {res:`val2'}"
+		qui replace _distance = . if _distance > r(r1) & `tr' == 0
+		qui egen double `tmp' = max(_distance/(`tr'==0)) if _match != ., by(_match)
+		qui replace _distance = `tmp' if `tr' == 1 & _match != . 
+		qui replace _match = . if _match != . & _distance == .
+		cap drop if _copy == 1 & _match == .
+		cap replace _support = . if _match == .
+		drop `tmp'
+		qui egen long `tmp' = group(_match)
+		qui replace _match = `tmp'
+		drop `tmp'
 	}
 	order `names'
 	di as text "{hline 17}{c TT}{hline 32}"
@@ -672,7 +718,7 @@ program define ultimatch, rclass
 				local r = `table'[2,1]
 				local t = `table'[3,1]
 				local p = `table'[4,1]
-				local var = substr("`v'",1,16)
+				local var = abbrev("`v'", 16)
 				if abs(`sdm') < 10 {
 					local sdmf = `""  " %8.5f `sdm'"'
 				}
@@ -721,7 +767,7 @@ program define ultimatch, rclass
 			local r = `table'[2,1]
 			local t = `table'[3,1]
 			local p = `table'[4,1]
-			local var = substr("`v'",1,16)
+			local var = abbrev("`v'",16)
 			if abs(`sdm') < 10 {
 				local sdmf = `""  " %8.5f `sdm'"'
 			}
