@@ -20,7 +20,7 @@ STATA
 * Inital release of **syncmatch**
 * Initial relase of **syncevent**
 * New **perc** option allows to specify a percentile caliper applied after matching
-* Reporting of t-test is more convenient: **matched** & **unmatched** do not require specification of report variables
+* Reporting of t-tests is more convenient: **matched** & **unmatched** do not require specification of report variables
 * Report option uses a separate <b>\*</b> character as shortcut for the matching variables, i.e., <b>report(score \* fitness)</b>
 * System variable **_copy** is now 0 for matched original observations
 * New help file
