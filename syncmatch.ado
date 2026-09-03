@@ -1,9 +1,9 @@
-// 2028.09.01 \\
+// 2028.09.03 \\
 cap program drop syncmatch
 program define syncmatch, rclass
 	syntax [varlist(default=none)] [in] [if], Time(varname) Start(string) UNIt(varname) [Treated(varname)] [Exact(varlist)] [LAG(string)] [EVEnt(varlist)] [EXP(string)] *
 	tempfile matched hood
-	tempvar use match valid _start _treated minmax maxtime mintime pretrend pretreat 
+	tempvar use match valid _start _treated tmp maxtime mintime pretrend pretreat 
 	tempname comp perc ptile match vantage meridian
 	cap which ultimatch
 	if _rc != 0 {
@@ -93,7 +93,7 @@ program define syncmatch, rclass
 	if "`event'" != "" {
 		local var = "`maxtime'"
 		foreach v of varlist `event' {
-			qui egen `time_type' `var' = max(`time'/(`v' != .)) if `use' == 1, by(`unit')
+			qui egen `type_time' `var' = max(`time'/(`v' != .)) if `use' == 1, by(`unit')
 			if "`var'" == "`maxtime'" {
 				local var = "`tmp'"
 			}
@@ -104,7 +104,7 @@ program define syncmatch, rclass
 		}
 		local var = "`mintime'"
 		foreach v of varlist `event' {
-			qui egen `time_type' `var' = min(`time'/(`v' != .)) if `use' == 1, by(`unit')
+			qui egen `type_time' `var' = min(`time'/(`v' != .)) if `use' == 1, by(`unit')
 			if "`var'" == "`mintime'" {
 				local var = "`tmp'"
 			}
