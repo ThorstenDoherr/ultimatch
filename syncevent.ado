@@ -1,10 +1,10 @@
-// 2028.09.01 \\
+// 2028.09.03 \\
 cap program drop syncevent
 program define syncevent, rclass
 	syntax varlist(min=1 max=1) [pweight/] [if] [in], TIme(varname) Start(string) Unit(varname) [Match(varname)] [TReated(varname)] [Window(string)] [Model(string)] [Level(real 95)] [BALanced] [CFAC] [PRECision] [NOCohort] [TWfe]
 	tokenize `"`varlist'"'
 	tempvar nouse _treated tmp1 id cohort event cluster wc wt bweight
-	tempname hood C E T W R
+	tempname hood C E T W R sum
 	if "`match'" == "" {
 		cap confirm  var _match
 		if _rc != 0 {
@@ -285,14 +285,10 @@ program define syncevent, rclass
 			matrix `W'[`c',`e'] = r(sum)
 		}
 	}
-	if "`precision'" != "" {
-		mata: syncevent_precision("`W'")
-	}
-	else {
+	if "`precision'" == "" {
 		mata: syncevent_cohort("`W'")
 	}
 	local i = 0
-	local cnames : colnames(e(b))
 	forvalue e = 1/`max_E' {
 		if `E'[`e',1] == `skip' {
 			continue
@@ -300,17 +296,19 @@ program define syncevent, rclass
 		local mp = cond(`E'[`e',1] < 0, "m", "p")
 		local ev = abs(`E'[`e',1])
 		local lc = ""
+		scalar `sum' = 0
 		forvalue c = 1/`max_C' {
 			local co = `C'[`c',1]
 			local coef = "t`co'_`mp'`ev'"
-			if index(" `cnames' ", " `coef' ") > 0 {
+			if colnumb(e(b), "`coef'") != . & colnumb(e(b), "o.`coef'") == . {
 				local lc = `"`lc' + `W'[`c',`e'] * t`co'_`mp'`ev'"'
+				scalar `sum' = `sum' + `W'[`c',`e']
 			}
 		}
 		local lc = substr(`"`lc'"',4,.)
 		local rows = "`rows' t_`mp'`ev'"
-		if "`lc'" != "" {
-			qui lincom `lc', level(`level')
+		if "`lc'" != "" & `sum' > 0 {
+			qui lincom (`lc')/`sum', level(`level')
 		}
 		else {
 			mata: st_rclear()
@@ -501,7 +499,7 @@ void syncevent_cohort(string scalar W)
 {	real matrix w, cohorts
 	w = st_matrix(W)
 	cohorts = rowmax(w)
-	cohorts =  cohorts :/ sum(cohorts)
+//	cohorts =  cohorts :/ sum(cohorts)
 	st_matrix(W, w :* 0 :+ cohorts)
 }
 

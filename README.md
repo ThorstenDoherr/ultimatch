@@ -16,7 +16,7 @@ STATA
 
 ## Version history
 
-2026.09.02
+2026.09.03
 * Inital release of **syncmatch**
 * Initial relase of **syncevent**
 * New **perc** option allows to specify a percentile caliper applied after matching
