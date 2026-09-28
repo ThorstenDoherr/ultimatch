@@ -1,5 +1,5 @@
 {smcl}
-{* 31aug2026}{...}
+{* 28sep2026}{...}
 {hline}
 help for {hi:ultimatch}
 {hline}
@@ -481,7 +481,7 @@ counterfactuals (black dots).{p_end}
 {p 8}{cmd:local graph = ""}{p_end}
 {p 8}{cmd:forvalue i = 1/`max' }{{p_end}
 {p 12}{cmd:local graph = "`graph' (line y x if _match == `i', lc(gs14))"}{p_end}
-
+{p 8}}{p_end}
 {p 8}{cmd:twoway }///{p_end}
 {p 12}{cmd:(scatter y x if treated == 0, msize(vsmall) msymbol(circle) mcolor(black)) }///{p_end}
 {p 12}{cmd:(scatter y x if treated == 1, msize(vsmall) msymbol(circle) mcolor(red)) }///{p_end}
@@ -511,7 +511,7 @@ treated and the counterfactual vector and not by the magnitude of the displaceme
 {p 8}{cmd:local graph = ""}{p_end}
 {p 8}{cmd:forvalue i = 1/`max' }{{p_end}
 {p 12}{cmd:local graph = "`graph' (line y x if _match == `i', lc(gs14))"}{p_end}
-
+{p 8}}{p_end}
 {p 8}{cmd:twoway }///{p_end}
 {p 12}{cmd:(scatter y x if treated == 0, msize(vsmall) msymbol(circle) mcolor(black)) }///{p_end}
 {p 12}{cmd:(scatter y x if treated == 1, msize(vsmall) msymbol(circle) mcolor(red)) }///{p_end}
@@ -560,7 +560,7 @@ the vantage point whereby a high variance is conducive to the performance.{p_end
 {p 8}frlink m:1 cluid, frame(cluster) gen(cluster_link){p_end}
 {p 8}forvalues k = 1/`K' {{p_end}
 {p 12}gen x`k' = frval(cluster_link, center`k') + rnormal(0, `sd'){p_end}
-
+{p 8}}{p_end}
 {p 8}twoway scatter x1 x2, mcolor(%30) title("Random Cluster Structure in First Two Dimensions"){p_end}
 {p 8}gen byte treated = uniform() < 0.2{p_end}
 {p 8}ultimatch x*, treated(treated) euclidean {text:// try cosine or mahalanobis}{p_end}
