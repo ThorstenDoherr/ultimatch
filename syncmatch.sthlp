@@ -1,5 +1,5 @@
 {smcl}
-{* 28aug2026}{...}
+{* 30oct2026}{...}
 {hline}
 help for {hi:syncmatch}
 {hline}
@@ -15,7 +15,7 @@ Requires {help ultimatch}{p_end}
 {title:Syntax}
 
 {p 8 15 2}{cmd:syncmatch} [{varlist}] [{it:if}] [{it:in}], {opth ti:me(varname)} {opt s:tart(varname|#)} {opth uni:t(varname)} [{opth t:reated(varname)}]
-[{opth e:xact(varname)}] [{opt lag:(# [#])}] [{opth eve:nt(varlist)}]
+[{opth e:xact(varname)}] [{opt lag:(# [#])}] [{opth eve:nt(varlist)}] [{opt nyt}]
 [{help ultimatch:ultimatch_options}]{p_end}
 
 {marker opt_summary}{...}
@@ -25,10 +25,13 @@ Requires {help ultimatch}{p_end}
 {marker timing}{...}
 {syntab:Timing}
 {synopt :{opth ti:me(varname)}}variable containing the absolute time reference as an integer value{p_end}
+
 {synopt :{opt s:tart(varname|#)}}variable defining either the staggered start of the treatment per unit or a time value for concurrent treatment. If 
 staggered, only the lowest start time is chosen per unit. The start variable should be missing for potential counterfactuals.{p_end}
+
 {synopt :{opth tr:eated(varname)}}declares a dummy variable, which is 1 for treated entities and 0 for potential counterfactuals. This option is required
 for concurrent treatment ({cmd:start} is a number) or when the start variable is non-missing for potential counterfactuals.{p_end}
+
 {synopt :{opt lag(# [#])}}specifies the matching window. By default, the first non-treated observation of a treated entity before the treatment
 {help syncmatch##timing:start} is subject to matching. The first number defines the maximum lag between the matching period and the
 {help syncmatch##timing:start}. The optional second number specifies the minimum lag to establish a safety distance to treatment. Both numbers have to 
@@ -40,20 +43,29 @@ be negative or missing ({cmd:.}). Examples:{break}
 {cmd:lag(-1 -1)} {hline 1} non-treated obs. has to be exactly 1 time unit before treatment{break}
 {cmd:lag(-1)} {hline 1} same as above{break}
 {cmd:lag(. -3)} {hline 1} first non-treated obs., at least 3 time units before treatment{break}{p_end}
+
 {marker matching}{...}
 {syntab:Matching}
 {synopt :{opth uni:t(varname)}}defines the entities within the panel. An entity is observed over multiple time periods referenced by the
 {help syncmatch##timing:time} option. The panel may be unbalanced with gaps between the periods of an individual entity.{p_end}
+
 {synopt :{opth e:xact(varlist)}}specifies variables outlining exact matching cells. The treated observation and its counterfactuals have 
 identical values for these variables. These are usually dummies, categorial variables or coarse ordinal variables, e.g., gender or industry codes.{p_end}
+
+{synopt :{opt nyt}}declares that not-yet-treated periods of treated observations can be used for matching. By default, only never-treated entities can be 
+matched as counterfactuals. When {help ultimatch##matching:nyt} is specified, a counterfactual may shift into treatment in later periods. Subsequent event
+studies require special handling of these cases (see {help syncevent}).{p_end}
+
 {marker restrictions}{...}
 {syntab:Restrictions}
 {synopt :{opth eve:nt(varlist)}}allows to already specify the dependent variables for the follow-up event analysis (DiD). Only treated and counterfactual
 entities with non-missing values for all variables in {help varlist} that can be observed under treatment and before the individual matching
 period are eligible for matching. This prevents matching of entities not contributing to the subsequent analysis. It may be favorable to split
-multiple dependent variables over separate matches before risking a selection bias towards high-quality entities.{break}
+multiple dependent variables over separate matches before risking a selection bias towards high-quality entities. In case of {help ultimatch##matching:nyt},
+the event ranges are restricted to the non-treated periods for counterfactuals.{break}
 This option creates an {help ultimatch} expression (see: {help ultimatch##restrictions:exp}). If this option is explicitly used, both expressions will be 
 put in parenthesis and combined via a logical {cmd:&} (and) operator.{p_end}
+
 {marker ultimatch_options}{...}
 {syntab:ultimatch}
 {synopt :{help ultimatch:ultimatch_options}} can be additionally specified. By default, {help syncmatch##syntax:syncmatch} will internally call
@@ -72,15 +84,22 @@ For more information, please refer to the {help ultimatch} documentation.{p_end}
 {synoptline}
 {synopt :{opt _match}}links the treated entities to matched counterfactuals via the same identifier. A specific {cmd:_match} value marks all panel observations of
 a treated entity and all panel observations of the matched counterfactuals (there may be more than one counterfactual per treated).{p_end}
+
+{synopt :{opt _weight}}entity p-weights balancing treated and control group of the matched observations ({cmd:_hood} is 1, 2 or 3):{break}
+for {cmd:treated}: always 1{break}
+for {cmd:counterfactuals}: frequency shares; total to 1 per entity{break}
+By default, multiple counterfactuals are drawn per treated when having the same distance.{p_end}
+
+{synopt :{opt _distance}}contains the distance to the treated for counterfactuals and the maximum distance among the counterfactuals for the treated.{p_end}
+
+{synopt :{opt _treated}}marks the treated entity of a match link (see {help syncmatch##system_vars:_match}). If {help syncmatch##matching:nyt} is
+specified, this indicator differentiates between the matched treated entity and the not-yet-treated counterfactual.{p_end}
+
 {synopt :{opt _hood}}marks the panel observations used for matching entities:{break}
 {cmd:0} {hline 1} panel observations not used for matching{break}
-{cmd:1} {hline 1} matched treated observation; usually first non-treated observation of an entity before treatment start{break}
-{cmd:2} {hline 1} matched counterfactual observation; synchronized by matching parameters and timing with the treated observation{p_end}
-{synopt :{opt _weight}}entity p-weights balancing treated and control group of the matched observations ({cmd:_hood} is 1 or 2):{break}
-for {cmd:treated}: always 1{break}
-for {cmd:counterfactuals}: frequency shares; total to 1 per entity and {cmd:_hood} == 2{break}
-By default, multiple counterfactuals are drawn per treated when having the same distance.{p_end}
-{synopt :{opt _distance}}contains the distance to the treated for counterfactuals and the maximum distance among the counterfactuals for the treated.{break}
+{cmd:1} {hline 1} matched {cmd:treated} observation; usually first non-treated observation of an entity before treatment start{break}
+{cmd:2} {hline 1} matched {cmd:counterfactual} observation; synchronized by matching parameters and timing with the treated observation{break}
+{cmd:3} {hline 1} matched {cmd:not-yet-treated} counterfactual observation; observations will become treated in later periods of this unit{p_end}
 {synoptline}
 
 {marker description}{...}
@@ -123,8 +142,9 @@ the respective share of treated entities.{p_end}
 {synoptset 24 tabbed}{...}
 {syntab:Scalars}
 {synopt:{cmd:r(comp)}}number of search steps to allocate counterfactuals to evaluate {help ultimatch##leeway:hypersphere leeway} performance.{p_end}
-{synopt:{cmd:r(perc)}}percentile caliper value, if {help ultimatch##restrictions:perc} option was specified{p_end}
-{synopt:{cmd:r(ptile)}}specified percentile of the {help ultimatch##restrictions:perc} option{p_end}
+{synopt:{cmd:r(caliper)}}specified {help ultimatch##restrictions:caliper}{p_end}
+{synopt:{cmd:r(pcal)}}percentile caliper value, if {help ultimatch##restrictions:perc} option was specified{p_end}
+{synopt:{cmd:r(perc)}}specified percentile of the {help ultimatch##restrictions:perc} option{p_end}
 
 {syntab:Macros}
 {synopt:{cmd:r(matching)}}matching header describing major settings of the {help ultimatch} call{p_end}
@@ -161,7 +181,7 @@ You do not have to declare {help syncevent##matching:match(_match)} as this is t
 {phang2}{cmd:gen byte switch = occ_code < occ_code[_n-1] & idcode == idcode[_n-1]}{p_end}
 {phang2}{cmd:egen byte occ_raise = min(year/switch), by(idcode)}{p_end}
 {phang2}{cmd:syncmatch age ln_wage ttl_exp, lag(-1) time(year) start(occ_raise) unit(idcode) exact(ind_code occ_code collgrad) event(ln_wage) perc(95) unmatched}{p_end}
-{phang2}{cmd:syncevent ln_wage, time(year) start(occ_raise) unit(idcode) match(_match) window(-5 .) nocohort balanced}{p_end}
+{phang2}{cmd:syncevent ln_wage, time(year) start(occ_raise) unit(idcode) match(_match) window(-5 .) nocohort}{p_end}
 {hline}
 
 {pstd}For our 2. example, we simulate a concurrent treatment in the form of a support program for young women with low wage preferably working in a specific 
@@ -174,9 +194,11 @@ be more generous when the actual treatment initiation is known, irrespective of 
 {phang2}{cmd:gen p_treated = normal(-collgrad*0.25 + (ind_code == 4)*0.5 - ln_wage*0.25 - (age-16)/29 + invnorm(uniform())*0.5)}{p_end}
 {phang2}{cmd:egen byte treated = max(p_treated > 0.5 & year == 72), by(idcode)}{p_end}
 {phang2}{cmd:replace ln_wage = ln_wage+0.2 if treated & year > 72}{p_end}
-{phang2}{cmd:syncmatch age ln_wage ttl_exp, time(year) start(73) treated(treated) exact(ind_code collgrad) event(ln_wage) unit(idcode) unm}{p_end}
-{phang2}{cmd:syncevent ln_wage, time(year) start(73) treated(treated) unit(idcode) window(-5 .) noc bal}{p_end}
+{phang2}{cmd:syncmatch age ln_wage ttl_exp, time(year) start(73) treated(treated) exact(ind_code occ_code collgrad) event(ln_wage) unit(idcode) unm}{p_end}
+{phang2}{cmd:syncevent ln_wage, time(year) start(73) treated(treated) unit(idcode) window(-5 .) noc}{p_end}
 {hline}
+
+{pstd}For more examples, please visit the help for {help syncevent}.
 
 {title:Author}
 

@@ -1,5 +1,5 @@
 {smcl}
-{* 28aug2026}{...}
+{* 30oct2026}{...}
 {hline}
 help for {hi:syncevent}
 {hline}
@@ -13,9 +13,10 @@ Intended to be used with {help syncmatch}{p_end}
 {marker syntax}{...}
 {title:Syntax}
 
-{p 8 15 2}{cmd:syncevent} {depvar} [{it:pweight}] [{it:if}] [{it:in}], {opth ti:me(varname)} {opt s:tart(varname|#)} {opth u:nit(varname)} 
-[{opth m:atch(varname)}] [{opth tr:eated(varname)}]{break}[{opt w:indow(# [#] [#])}] [{opt m:odel(string)}] 
-[{opt l:evel(#)}] [{opt bal:anced}] [{opt cfac}] [{opt prec:ision}] [{opt noc:ohort}] {p_end}
+{p 8 15 2}{cmd:syncevent} {depvar} [{it:if}] [{it:in}], {opth ti:me(varname)} {opt s:tart(varname|#)} {opth u:nit(varname)} 
+[{opth m:atch(varname)}] [{opth tr:eated(varname)}]{break}[{opt w:indow(# [#] [#])}] [{opt mod:el(dummy|within|poisson)}] 
+[{opt nyt(ignore|exclude|replace)}] [{opt cfac}] [{opt prec:ision}] [{opth vce(vcetype)}] [{opt fe(cohort|match)}]
+[{opt noc:ohort}] [{opt l:evel(#)}]{p_end}
 
 {marker opt_summary}{...}
 {synoptset 22 tabbed}{...}
@@ -23,57 +24,88 @@ Intended to be used with {help syncmatch}{p_end}
 {synoptline}
 {marker timing}{...}
 {syntab:Timing}
-{synopt :{opth ti:me(varname)}}variable containing the absolute time reference as integer value{p_end}
+{synopt :{opth ti:me(varname)}}variable containing the absolute time reference as discrete values{p_end}
+
 {synopt :{opt s:tart(varname|#)}}variable defining either the staggered start of the treatment per unit or a time value for concurrent treatment. If 
-staggered, only the lowest start time is chosen per unit. The start variable should be missing for counterfactuals.{p_end}
+staggered, only the lowest start time is chosen per unit. The start variable should be missing for counterfactuals. This parameter defines the
+{cmd:cohort} of the treated unit.{p_end}
+
 {synopt :{opth tr:eated(varname)}}declares a dummy variable, which is 1 for treated entities and 0 for counterfactuals. This option is required for 
-concurrent treatment ({cmd:start} is a number) or when the start variable is non-missing for counterfactuals.{p_end}
+concurrent treatment ({cmd:start} is a number) or when the start variable is non-missing for counterfactuals, which is the case when matching uses
+not-yet-treated observations (see {help syncmatch} option: {help syncmatch##matching:nyt}). If not specified but required, the system
+variable {help syncmatch##system_vars:_treated} will be used by default.{p_end}
+
 {marker matching}{...}
 {syntab:Matching}
 {synopt :{opth u:nit(varname)}}defines the entities within the panel. It may not be unique due to matching with replacement. An entity can be drawn 
 multiple times as counterfactual irrespective of the cohort. Therefore, it will be used to cluster the standard errors.{p_end}
+
 {synopt :{opth m:atch(varname)}}links a treated entity to the matched counterfactual entities. This identifier has the same value for all panel 
-observations of a treated entity and the panel observations of its matched counterfactuals. If not specified, the system variable {cmd:_match} generated
-by {help syncmatch} will be assumed.{p_end}
+observations of a treated entity and the panel observations of its matched counterfactuals. If not specified, the system variable
+{help syncmatch##system_vars:_match} (see {help syncmatch}) will be used by default.{p_end}
+
 {marker model}{...}
 {syntab:Model}
 {synopt :{opt prec:ision}}takes the variation of the treated in an unbalanced panel into account for the weighted linear combination of the treatement 
 effects. A time preriod with a low representation of treated has a lower weight than another period with better representation for the same cohort. 
 Without this option, weights are defined by the maximum number of treated of a cohort irrespective of panel variation (default). A high deviation of 
 the collective coefficients between these settings indicates a cohort specific representation bias.{p_end}
-{synopt :{opt m:odel(string)}}specifies the fixed-effects model:
-{break}{cmd:areg} {hline 1} dummy regression. This is the default model because it supports weight variation within an entity and therefore unbalanced
-panel adjustments.
-{break}{cmd:xtreg} {hline 1} within regression. Does not support weight variation within an entity. Supports entity balancing of multiple counterfactuals
-per treated and counterfactual balancing.
-{break}{cmd:xtpoisson} {hline 1} poisson regression. Does not support weights. Standard errors are not clustered.
-{break}{cmd:ppmlhdfe} {hline 1} poisson pseudo-likelihood regession. Does not support weights. Standard errors are clustered.
-{p_end}
+
+{synopt :{opt mod:el(...)}}specifies the fixed-effects model (keywords can be abbreviated):{p_end}
+{synopt :}{cmd:dummy} {hline 1} dummy regression. It supports weight variation within an entity and therefore unbalanced panel adjustments
+(see {help areg}).{p_end}
+{synopt :}{cmd:within} {hline 1} within regression. Similar to {help xtreg}, but supports weight variation within an entity and therefore unbalanced panel
+adjustments.{p_end}
+{synopt :}{cmd:poisson} {hline 1} poisson pseudo-likelihood regession. Does not support weights. Standard errors are clustered. Requires the installation of
+module {help ppmlhdfe}.{p_end}
+
+{synopt :{opt fe(...)}}specifies the unit absorbing the fixed-effects (keywords can be abbreviated):{p_end}
+{synopt :}{cmd:cohort} {hline 1} fixed-effects are based on {help syncevent##matching:unit} and {cmd:cohort} assigning only one FE to a unit even when
+matched multiple times in a cohort. This is the default setting.{p_end}
+{synopt :}{cmd:match} {hline 1} absorbs fixed-effects based on every combination of {help syncevent##matching:unit} and {help syncevent##matching:match}.
+
 {synopt :{opt tw:fe}}performs a two-way fixed effects regression instead of using a cohort-sensitive fixed effect model. All cohorts are lumped together
 irrespective of cohort-specific selection bias, which is mitigated by absolute time dummies. Can be used for demonstration purposes or to gauge the extend
 of cohort bias.{p_end}
+
+{marker se}{...}
+{syntab:SE}
+{synopt :{opth vce(vcetype)}}{it:vcetype} may be {cmd:cluster} (by default clustered on {help syncevent##matching:unit}) or {cmd:robust}. If omitted,
+{cmd:cluster} is the default setting.{p_end}
+
 {marker balancing}{...}
 {syntab:Balancing}
-{synopt :{opt bal:anced}}balances the counterfactuals according to the treated. Depending on the matching approach, multiple counterfactuals could have
-been drawn for a treated entity. To prevent potential bias, probability weights offset the counterfactuals to maintain a balance between the treated and 
-the control group. 
-The default model {cmd:areg} additionally balances variation in the representation between the periods, while the {cmd:xtreg} model only balances the 
-general populations irrespective of the period. The poisson models do not support balancing. Specified pweights are included into the balancing.{p_end}
 {synopt :{opt cfac}}balances counterfactuals and treated. With normal balancing, a treated observation without counterfactuals or vice versa in a given
 period still remains in the sample. This option will remove any imbalances between the groups by removing those observations. This option is supported
 by all models.{p_end}
+
+{synopt :{opt nyt(string)}}declares that the data contains not-yet-treated counterfactuals and specifies how they should be handled when shifting into
+treatment (keywords can be abbreviated):{p_end}
+{synopt :}{cmd:ignore} {hline 1} ignores the transition into treatment and keep the affected observations but will report them (for educational purposes
+to demonstrate treatment contamination of the control group).{p_end}
+{synopt :}{cmd:exclude} {hline 1} removes counterfactual observations after becoming treated. When a treated observation becomes isolated because all
+counterfactual observations become treated, it will also be excluded. Counterfactual entities will be curtailed by their treated periods, while treated
+entities lose their isolated periods.{p_end}
+{synopt :}{cmd:replace} {hline 1} replaces counterfactual obs. becoming treated when associated treated obs. would become isolated. As a not-yet-treated
+counterfactual entity is also a treated entity of a later cohort, its counterfactuals can be used as replacement. The periods before the transition into
+treatment of the corresponding not-yet-treated counterfactual are truncated from the replacement entity copy. The cohort and the
+{help syncevent##matching:match} link variable are adjusted according to the new treated entity.{p_end}
+{synopt :}Specifying {cmd:nyt} always reports potential not-yet-treated violations if applicable.
+For more information see {help syncevent##nyt:here}.{p_end}
+
 {marker reporting}{...}
 {syntab:Reporting}
 {synopt :{opt l:evel(#)}}set confidence level; default is {cmd:level(95)}{p_end}
+
 {synopt :{opt noc:ohort}}suppresses the output of the cohort estimation{p_end}
-{synopt :{opt w:indow(# [#] [#])}}specifies the leads (test for pretrents), the omitted pre-treatmemt period (default t-1) and the lags, for example:
-{break}{cmd:window(. -1 .)} {hline 1} all available leads and lags, omitt first non-treated period (-1) before treatment (default)
-{break}{cmd:window(-5 -1 5)} {hline 1} report 5 leading and 5 lagging periods, omitt period -1 as baseline
-{break}{cmd:window(-5 5)} {hline 1} same as above
-{break}{cmd:window(-7 .)} {hline 1} report 7 leading periods and all availabe treatment periods, skipping -1
-{break}{cmd:window(-7)} {hline 1} same as above
-{break}{cmd:window(-7 -2 .)} {hline 1} same as above but omitts t-2
-{p_end}
+
+{synopt :{opt w:indow(# [#] [#])}}specifies the leads (test for pretrents), the omitted pre-treatmemt period (default t-1) and the lags, for example:{p_end}
+{synopt :}{cmd:window(. -1 .)} {hline 1} all available leads and lags, omitt first non-treated period (-1) before treatment (default){p_end}
+{synopt :}{cmd:window(-5 -1 5)} {hline 1} report 5 leading and 5 lagging periods, omitt period -1 as baseline{p_end}
+{synopt :}{cmd:window(-5 5)} {hline 1} same as above{p_end}
+{synopt :}{cmd:window(-7 .)} {hline 1} report 7 leading periods and all availabe treatment periods, skipping -1{p_end}
+{synopt :}{cmd:window(-7)} {hline 1} same as above{p_end}
+{synopt :}{cmd:window(-7 -2 .)} {hline 1} same as above but omitts t-2{p_end}
 {synoptline}
 
 {marker description}{...}
@@ -97,7 +129,7 @@ Thus, treated cohorts are transferred onto the control group. This can be achiev
 
 {pstd}Usually, upholding the association between treated and counterfactuals is not 
 needed for simultaneous treatment but staggered treatment imposes additional structural variation between the cohorts, for example, differences between
-early and late adopters. Two-way fixed effects models would just lump those groups together creating a potential structural bias which cannot be compensated 
+early and late adopters. Two-way fixed effects models would just lump those groups together creating a potential structural bias, which cannot be compensated 
 by the absolute time reference and the fixed effects. By interacting the relative time dummies with the corresponding cohort, the cohort specific treatment
 dummies capture the isolated effect for every cohort within one regression. The relative treatment time dummies cover a time window ranging from placebo
 periods to observe pre-treatment trends to a specified treatment time span, e.g., over 5 pre-treatment periods to 7 periods into treatment. The collective
@@ -111,24 +143,31 @@ panel by adjusting for the representation of treated in every relative time peri
 {pstd}Depending on the matching approach, multiple nearest neighbors may be attached to a counterfactual. {help syncmatch:syncmatch}, for example, draws
 all neighbors with the same distance as counterfactuals to avoid arbitrary selection. If this is the case, the distributions of treated and counterfactuals
 have to be balanced by assigning a probability weight to offset the counterfactuals. The weights of the counterfactuals of a treated entity add up to 1. If
-the fixed effects regression model allows for weight variation per entity, the balanced weights are adjusted for every period. Only the
-{help syncevent##model:areg} model supports full balancing support of unbalanced panels. The weight total of the counterfactuals is always 1 irrespective of
-the period. The model {help syncevent##model:xtreg} supports only entity specific weights without period adjustments. Both models accept the specification
-of {help syncevent##syntax:pweight} for probability weights like the variable {cmd:_weight} - a system variable of {help syncmatch:syncmatch} - with entity
-weights after matching.{p_end}
+the fixed effects regression model allows for weight variation per entity, the balanced weights are adjusted for every period. The weight total of the 
+counterfactuals is always 1 irrespective of the period.{p_end}
 
-{pstd}You can use {cmd:[pweight=_weight]} without the option {help syncevent##balancing:balanced} to enforce entity weights for {help syncevent##model:areg} and 
-{help syncevent##model:xtreg}. This is not equivalent to {help syncevent##model:xtreg} with the option {help syncevent##balancing:balanced} because balancing
-is constrained by the observed time {help syncevent##reporting:window}. Counterfactuals completely outside the window are not considered for entity balancing.
-{p_end} 
-
-{pstd}The poisson models {help syncevent##model:xtpoisson} and {help syncevent##model:ppmlhdfe} do not support weight-based balancing. It is suggested to draw
-only one counterfactual per treated.{p_end}
+{pstd}The {help syncevent##model:poisson} model does {cmd:not} support weighting to offset unbalanced panels or multiple counterfactuals. It is suggested 
+to draw only one counterfactual per treated.{p_end}
 
 {pstd}Counterfactual balancing ({help syncevent##balancing:cfac}) considers treated and counterfactuals as twin entities. It removes observations without a 
-matching counterpart from the sample. This affects treated observations without counterfactuals as well as counterfactual observations without treated per period.
-{help syncevent##balancing:cfac} can be applied to all models as it does not require weights. It can be combined with the {help syncevent##balancing:balanced}
-option.{p_end}
+matching counterpart from the sample. This affects treated observations without counterfactuals as well as counterfactual observations without treated per
+period. {help syncevent##balancing:cfac} can be applied to all models as it does not require weights. {p_end}
+
+{marker nyt}{...}
+{title:Not-yet-treated counterfactuals}
+
+{pstd}Enforcing to match counterfactuals only from the pool of never-treated entities is a conventional setup to emulate a natural experiment but may be
+too restrictive given the specific treatment potentially excluding the nearest matching options. The {help syncmatch} tool allows to match not-yet-treated 
+entities as counterfactuals to enable the best possible matching candidates, which still belong to the control group until they become treated in a later
+period. This is only possible for staggered treatement.{p_end}
+
+{pstd}The {help syncevent##balancing:nyt} option allows to specify wether to {cmd:ignore}, {cmd:exclude} or {cmd: replace} the counterfactual observations
+under treatment. Periods of treated entities are considered {cmd:isolated} when all counterfactual periods have transitioned into treatment. Excluding
+transitioned counterfactual periods also removes isolated periods of the treated entity to maintain structural balance between the groups.{p_end}
+
+{pstd}Because not-yet-treated entities are counterfactual copies of treated entities of a later cohort, isolated treated observations can be sustained by
+replacing the excluded now-treated counterfactual obs. with the counterfactuals of the corresponding treated entity for the isolated periods. Being nearest
+neighbors to the lost counterfactuals, they represent a suitable substitution.{p_end}
 
 {marker return}{...}
 {title:Stored Results}
@@ -139,6 +178,10 @@ option.{p_end}
 {syntab:Scalars}
 {synopt:{cmd:r(cfac_t)}}number of dropped treated observation when counterfactual balancing is activated{p_end}
 {synopt:{cmd:r(cfac_c)}}number of dropped counterfactual observation when counterfactual balancing is activated{p_end}
+{synopt:{cmd:r(nyt_cfac)}}number of treated observations of not-yet-treated counterfactuals{p_end}
+{synopt:{cmd:r(nyt_isolated)}}number of excluded treated observations that become isolated due to counterfactuals shifting into treatment{p_end}
+{synopt:{cmd:r(nyt_treated)}}number of treated units receiving replacement that would otherwise become isolated{p_end}
+{synopt:{cmd:r(nyt_replace)}}number of now-treated counterfactual units receiving replacement for their treated periods{p_end}
 
 {synoptset 24 tabbed}{...}
 {syntab:Matrices}
@@ -160,23 +203,19 @@ least one pre-treatment (not involved with matching) and one treatment period ex
 
 {pstd}Our event study with {help syncevent##syntax:syncevent} begins 5 years before treatment to observe pre-treatment trends and exhausts all available treatment 
 periods. The system variable {cmd:_match} - generated by {help syncmatch:syncmatch} - constitutes the linkage between treated and counterfactual observations. 
-You do not have to declare {help syncevent##matching:match(_match)} as this is the default setting for {help syncevent}. We see that there is no difference between the
-unbalanced and the balanced model as the {cmd:_weight} variable indicates no multiple assignments of counterfactuals. The system variable {cmd:_hood} marks the panel
-observations matched by {help syncmatch:syncmatch}.{p_end}
+You do not have to declare {help syncevent##matching:match(_match)} as this is the default setting for {help syncevent}. We suppress the cohort specific output for the
+{help syncevent##model:within} regression.{p_end}
 
 {hline}
 {phang2}{cmd:webuse nlswork, clear}{p_end}
 {phang2}{cmd:egen byte spouse = min(year/msp), by(idcode)}{p_end}
 {phang2}{cmd:syncmatch hours age ln_wage ttl_exp, lag(-1) time(year) start(spouse) exact(occ_code collgrad) event(hours) unit(idcode) unmatched}{p_end}
 {phang2}{cmd:syncevent hours, time(year) start(spouse) unit(idcode) match(_match) window(-5 .)}{p_end}
-{phang2}{cmd:syncevent hours, time(year) start(spouse) unit(idcode) window(-5 .) nocohort balanced} // match() is optional after syncmatch{p_end}
-{phang2}{cmd:sum _weight if _hood == 2}{p_end}
+{phang2}{cmd:syncevent hours, time(year) start(spouse) unit(idcode) window(-5 .) model(within) nocohort} // match() is optional after syncmatch{p_end}
 {hline}
 
-{pstd}Removing {cmd:ln_wage} and {cmd:ttl_exp} from the matching command {help syncmatch:syncmatch} will reduce the variation between the counterfactuals and cause 
-multiple counterfactual assignments of similar distances. Although this can be prevented with specific matching options, we suggested to use a balanced event 
-study instead. Furthermore, the elaborate matching for this example seems unnecessary considering the random nature of the treatment event.
-{help syncevent##example_4:Example 4} provides a simple test for random selection.{p_end}
+{pstd}The elaborate matching for this example seems unnecessary considering the random nature of the treatment event. {help syncevent##example_4:Example 4} demonstrates a
+simple test for random selection.{p_end}
 
 {marker example_2}{...}
 {pstd}For example 2, the treatment variable {cmd:occ_raise} contains the first year when an occupational rank was improved. Although the variable {cmd:occ_code} is rather
@@ -188,13 +227,43 @@ We apply Mahalanobis distance-based neighborhood matching on age, wage and job e
 on the first pre-treatment period {cmd:lag(-1)} to avoid timing inconsistencies. We already declare our variables of interest for the event study to ensure that at
 least one pre-treatment (not involved with matching) and one treatment period exist per matched observation.{p_end}
 
+{pstd}The second part of this example introduces the matching of not-yet-treated time periods of treated units as counterfactuals to treated units of earlier cohorts.
+This is achieved with the keyword {help syncmatch##matching:nyt} of the {help syncmatch} command. The system variable {help syncmatch##system_vars:_hood} indicates the
+affected cases.{p_end}
+ 
+{pstd}The first event analysis completely neglects the fact that counterfactuals may also have a non-missing treatment indicator {cmd:occ_raise}, which transfers them into 
+the treated group. The second regression acknowledges the existence of not-yet-treated cases by implicitly using the system variable {help syncmatch##system_vars:_treated}
+to maintain the integrity of the control group. This is equivalent to specifying {help syncevent##timing:treated(_treated)}. Still, the control group is contaminated 
+with now-treated time periods of not-yet-treated matches. The keyword {cmd:exclude} for the {help syncevent##balancing:nyt} option removes the now-treated 
+time periods of counterfactuals and excludes isolated time periods of treated completely stripped of counterfactuals. Finally, the attrition by counterfactuals transitioning
+into treatment can be mitigated by applying the keyword {cmd:replace} for the {help syncevent##balancing:nyt} option. This activates the recursive process of replacing 
+treated time periods of counterfactuals with the corresponding time period range of their own counterfactuals as treated.{p_end}
+
+{pstd}For the third section of this example, we remove all never-treated units representing women that never changed their occupation. To match among the staggered treated
+cohorts, we have to specify the {help syncmatch##matching:nyt} option of the {help syncmatch} command. We observe the effect of an occupation raise within a population of
+women receiving that treatment. This effect is completly timing driven as counterfactuals will catch up eventually.{p_end}
+
 {hline}
 {phang2}{cmd:webuse nlswork, clear}{p_end}
 {phang2}{cmd:sort idcode year}{p_end}
 {phang2}{cmd:gen byte switch = occ_code < occ_code[_n-1] & idcode == idcode[_n-1]}{p_end}
 {phang2}{cmd:egen byte occ_raise = min(year/switch), by(idcode)}{p_end}
+{phang2}{cmd:preserve}{p_end}
 {phang2}{cmd:syncmatch age ln_wage ttl_exp, lag(-1) time(year) start(occ_raise) unit(idcode) exact(ind_code occ_code collgrad) event(ln_wage) unmatched}{p_end}
-{phang2}{cmd:syncevent ln_wage, time(year) start(occ_raise) unit(idcode) window(-5 .) balanced}{p_end}
+{phang2}{cmd:syncevent ln_wage, time(year) start(occ_raise) unit(idcode) window(-5 .) noc}{p_end}
+{hline}
+{phang2}{cmd:restore, preserve}{p_end}
+{phang2}{cmd:syncmatch age ln_wage ttl_exp, lag(-1) time(year) start(occ_raise) unit(idcode) exact(ind_code occ_code collgrad) event(ln_wage) unm nyt}{p_end}
+{phang2}{cmd:tab _hood} // shows the extend of not-yet-treated counterfactual{p_end}
+{phang2}{cmd:syncevent ln_wage, time(year) start(occ_raise) unit(idcode) window(-5 .) noc} // completely neglecting nyt: counterfactuals are considered treated{p_end}
+{phang2}{cmd:syncevent ln_wage, time(year) start(occ_raise) unit(idcode) window(-5 .) noc nyt(ignore)} // nyt units stay in the control group but treatment is ignored{p_end}
+{phang2}{cmd:syncevent ln_wage, time(year) start(occ_raise) unit(idcode) window(-5 .) noc nyt(exclude)} // treatment periods of counterfactuals are excluded{p_end}
+{phang2}{cmd:syncevent ln_wage, time(year) start(occ_raise) unit(idcode) window(-5 .) noc nyt(replace)} // substitution of treatment periods of counterfactuals{p_end}
+{hline}
+{phang2}{cmd:restore}{p_end}
+{phang2}{cmd:drop if occ_raise == .}{p_end}
+{phang2}{cmd:syncmatch age ln_wage ttl_exp, lag(-1) time(year) start(occ_raise) unit(idcode) exact(ind_code occ_code collgrad) event(ln_wage) unm nyt}{p_end}
+{phang2}{cmd:syncevent ln_wage, time(year) start(occ_raise) unit(idcode) window(-5 .) noc nyt(replace)}{p_end}
 {hline}
 
 {marker example_3}{...}
@@ -208,8 +277,8 @@ actual treatment initiation is known, irrespective of being staggered or concurr
 {phang2}{cmd:gen p_treated = normal(-collgrad*0.25 + (ind_code == 4)*0.5 - ln_wage*0.25 - (age-16)/29 + rnormal(0,0.5))}{p_end}
 {phang2}{cmd:egen byte treated = max(p_treated > 0.5 & year == 72), by(idcode)}{p_end}
 {phang2}{cmd:replace ln_wage = ln_wage+0.2 if treated & year > 72}{p_end}
-{phang2}{cmd:syncmatch hours age ln_wage ttl_exp, time(year) start(73) treated(treated) exact(ind_code collgrad) event(ln_wage) unit(idcode) unm}{p_end}
-{phang2}{cmd:syncevent ln_wage, time(year) start(73) treated(treated) unit(idcode) window(-5 .) noc bal}{p_end}
+{phang2}{cmd:syncmatch hours age ln_wage ttl_exp, time(year) start(73) treated(treated) exact(ind_code occ_code collgrad) event(ln_wage) unit(idcode) unm}{p_end}
+{phang2}{cmd:syncevent ln_wage, time(year) start(73) treated(treated) unit(idcode) window(-5 .) noc}{p_end}
 {hline}
 
 {marker example_4}{...}
@@ -219,9 +288,9 @@ This test confirms that the pre-treatment trends are parallel (insignificant) wi
 {hline}
 {phang2}{cmd:webuse nlswork, clear}{p_end}
 {phang2}{cmd:egen byte spouse = min(year/msp), by(idcode)}{p_end}
-{phang2}{cmd:gen double score = uniform()}{p_end}
+{phang2}{cmd:gen score = uniform()}{p_end}
 {phang2}{cmd:syncmatch score, lag(-1) time(year) start(spouse) unit(idcode) unm}{p_end}
-{phang2}{cmd:syncevent hours, time(year) start(spouse) unit(idcode) window(-5 .) noc bal}{p_end}
+{phang2}{cmd:syncevent hours, time(year) start(spouse) unit(idcode) window(-5 .) noc}{p_end}
 {hline}
 
 {pstd}Try this test for the setup of {help syncevent##example_3:Example 3}.{p_end}

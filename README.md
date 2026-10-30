@@ -15,6 +15,11 @@ STATA
 * Adjust the templates in the examples to your needs until you you get the hang of it.
 
 ## Version history
+2026.10.30
+* **syncmatch** supports not-yet-treated counterfactual matching with the **nyt** option
+* **syncevent** always balances counterfactuals ignoring external weights
+* **syncevent** supports not-yet-treated (**nyt**) handling
+* **syncevent** streamlined model support with flexible **fe** unit specification and **vce** selection
 
 2026.09.03
 * Inital release of **syncmatch**

@@ -1,4 +1,4 @@
-// 2026.08.20 \\
+// 2026.10.14 \\
 cap program drop ultimatch
 program define ultimatch, rclass
 	version 9.0
@@ -193,7 +193,7 @@ program define ultimatch, rclass
 			error 999
 		}
 	}
-	di as text "`matching'"
+	di _newline as text "`matching'"
 	return local matching = "`matching'"
 	if `"`exp'"' != "" {
 		local exp = subinstr(`"`exp'"',`"'"',`"""',.)
@@ -577,13 +577,14 @@ program define ultimatch, rclass
 		}
 		qui replace _copy = 0 if _copy == . & _match != .
 	}
+	if `caliper' != . {
+		return scalar caliper = `caliper'
+	}
 	if `perc' != . {
 		_pctile _distance if `tr' == 0, p(`perc')
-		return scalar perc = r(r1)
-		return scalar ptile = `perc'
-		local val1 = string(`perc',"%18.0g")
-		local val2 = string(r(r1),"%18.0g")
-		di as text "{res:`val1'%} percentile caliper: {res:`val2'}"
+		local pcal = r(r1)
+		return scalar pcal = `pcal'
+		return scalar perc = `perc'
 		qui replace _distance = . if _distance > r(r1) & `tr' == 0
 		qui egen double `tmp' = max(_distance/(`tr'==0)) if _match != ., by(_match)
 		qui replace _distance = `tmp' if `tr' == 1 & _match != . 
@@ -779,6 +780,9 @@ program define ultimatch, rclass
 			local rownames = "`rownames' m_`v'"
 		}		
 		di as text "{hline 17}{c BT}{hline 32}{c BT}{hline 36}"
+	}
+	if `perc' != . {
+		di as text "{res:`=string(`perc',"%18.0g")'%} percentile caliper: {res:`=string(`pcal',"%18.0g")'}"
 	}
 	matrix rownames `matrix' = `rownames'
 	if "`report'" == "" {

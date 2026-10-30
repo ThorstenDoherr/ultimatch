@@ -1,5 +1,5 @@
 {smcl}
-{* 28sep2026}{...}
+{* 14oct2026}{...}
 {hline}
 help for {hi:ultimatch}
 {hline}
@@ -30,7 +30,9 @@ Keywords: nearest neighbor, radius, porpensity, distance, mahalanobis, haversine
 {hline 1} {cmd:multiple variables} initiate {hi:distance-based} matching (see {help ultimatch##distance:mahlanobis}, {help ultimatch##distance:euclidean},
 {help ultimatch##distance:haversine}, {help ultimatch##distance:cosine}){break}
 {hline 1} {cmd:no variable} enforces {hi:coarsened exact} matching (see {help ultimatch##matching:exact}){p_end}
+
 {synopt:{opth t:reated(varname)}}specifies a dummy variable marking the treated observations{p_end}
+
 {synopt:{opth exa:ct(varlist)}}specifies a group of variables defining cells (stratums). The counterfactuals must be in the same cell as
 the corresponding treated observation, therefore, the term {cmd:exact}. This option can be combined with any matching method. The
 specified variables should be ordinal, categorical or binary. If this option is specified without a general {it:varlist} (a score or
@@ -55,28 +57,35 @@ matches groups not individuals. The sub-option {cmd:full} forces tuples comprisi
 additional counterfactual. This is the only case where the {help ultimatch##system_vars:_weight} variable may contain a weight different from 1 for
 a treated observation to preserve the original distribution of the treated. The {cmd:full} option allows even more control over the interactions at
 the expense of an inflated dataset. It is also useful for educational purposes (see: {help ultimatch##example_2:Example 2}).{p_end}
+
 {synopt:{opt rad:ius}}activates radius matching for score-based and distance-based matching based on the {help ultimatch##restrictions:caliper}{p_end}
+
 {synopt:{opth d:raw(#)}}specifies the number of neighbors for every treated observation to be drawn. Neighbors with the same score or
 distance are considered one draw unless the option {help ultimatch##general:single} is specified. With this option, it is possible to diminish the burden
 of the "nearest neighbor" by including a larger neighborhood at the expense of similarity. It is {hi:not} supported by {hi:coarsened exact} matching
 because it always draws all observations in a cell defined by the option {cmd:exact}.{p_end}
+
 {synopt:{opt si:ngle}}dismisses the default behavior of considering all observations with the same score or distance as one observation regarding the
 draw limit. Every observation will be counted towards the draw limit. The counterfactuals are randomly drawn within groups of equal scores or
 distances. It is {hi:not} supported by {help ultimatch##general:radius} and {hi:coarsened exact} matching as they are not restricted to a specific 
 number of counterfactuals.{p_end}
+
 {synopt:{opt g:reedy}}draws without replacement. The treated observation with the lowest distance will claim the non-treated observations. Treated
 observations that were deprived of their counterfactuals are reactivated to search for alternative neighbors, potentially repressing other treated
 observations. This may initiate a displacement cascade until all treated observations have settled with the best counterfactual they could possibly
 claim given the competition. It is strongly advised to apply {help ultimatch##general:greedy} together with a reasonable
 {help ultimatch##restrictions:caliper} and the {help ultimatch##general:single} setting. It is {hi:not} supported by {hi:coarsened exact} and
 {help ultimatch##general:radius} matching.{p_end}
+
 {synopt:{opt b:etween}}searches for higher and lower ranked neighbors independently. The {help ultimatch##general:draw} option limits both directions
 separately. It is only supported by score-based matching.{p_end}
+
 {synopt:{opt su:pport}}guarantees that there is overlap between the treated and non-treated population regarding the score, the so called
 {it:common support}. This option enforces the creation of the {help ultimatch##system_vars:_support} variable marking observations with common support
 with 1. The score has to be in the confines defined by the minimum of the maximum scores and the maximum of the minimum scores of treated vs. non-treated
 observations. In the case of distance-based matching, the first variable is considered to contain the score to allow the inclusion of a propensity score.
 It is {hi:not} supported by {hi:coarsened exact} matching.{p_end}
+
 {synopt:{opt ran:k}}activates {hi:Percentile Rank} transformation of all matching variables in {help varlist}. In case of distance-based matching the
 Euclidean distance will be used by default. This can be changed to {hi:Mahalanobis} distance with the option {help ultimatch##distance:mahalanobis}.
 Rank transformation is incompatible with {help ultimatch##distance:haversine} and {help ultimatch##distance:cosine} distance matching.{p_end}
@@ -85,14 +94,18 @@ Rank transformation is incompatible with {help ultimatch##distance:haversine} an
 {syntab:Distance}
 {synopt:{opt m:ahalanobis}}can be applied to switch to Mahalanobis distance calculation. This is the default setting for distance-based matching. This
 option is {hi:not} supported by {hi:coarsened exact} and score-based matching.{p_end}
+
 {synopt:{opt eu:clidean}}can be applied to switch to Euclidean distance calculation. This is the default setting in case
 of percentile {help ultimatch##distance:rank} transformation. This option is {hi:not} supported by {hi:coarsened exact} and score-based matching.{p_end}
+
 {synopt:{opt hav:ersine}}can be applied if the two variables of {it:varlist} describe geographic coordinates. The first variable has to denote the
 {hi:latitude} in degrees between -90 and 90, while the second variable contains the {hi:longitude} between -180 and 180 degrees. Even though any values are
 valid, you should heed this convention. The haversine distance is usually applied on geocoded data to identify the spatial neighborhood.{p_end}
+
 {synopt:{opt earth:(#)}}defines the radius for the {hi:haversine} distance. The default radius is 6371 in kilometers. You can change it to
 accommodate a different unit of measurement, i.e. miles or meter, or a different planet, i.e 1184 (Pluto) or 69173 (Jupiter). If you use a
 {help ultimatch##restrictions:caliper}, adjust it accordingly.{p_end}
+
 {synopt:{opt cos:ine}}distance is typically applied on variables describing a vector usually composed of probabilities or indicators in the same
 continuous range, i.e., TF-IDF vectors. The cosine similarity is independent of the magnitude of the vectors as it only measures the cosine of the
 angles between the vectors. Null vectors are excluded as they have no direction.{break}
@@ -108,15 +121,18 @@ vector can be found in the variable {hi:_length}. The original values can be res
 no limit). It is {hi:not} supported by {hi:coarsened exact} matching because due to lack of a score or a distance. Caliper describes the radius in
 case of {help ultimatch##general:radius} matching.{break}{hi:Hint:} Because it is difficult to assess the range of the Mahalanobis distance, use the
 {help ultimatch##general:perc} option to define a percentile caliper, which will be applied after matching.{p_end}
+
 {synopt:{opth p:erc(#)}}defines a retroactive caliper after matching based on the percentile of the distances of the counterfactuals. All
 counterfactuals with a higher distance than the percentile caliper will be detached from the treated observation. A treated observation without
 counterfactuals will be dismissed. Since this can be considered a transaction between treated and counterfactuals, the option
-{help ultimatch##general:copy} has to be specified. High percentiles (for example: 95), can help to reduce outliers.{p_end}
+{help ultimatch##general:copy} has to be specified. High percentiles (for example: 97.5) can help to reduce outliers.{p_end}
+
 {synopt:{opth exp:(string)}}defines a logical expression that will be evaluated before a potential non-treated observation will be matched. If the
 expression evaluates to zero, the observation will be ignored. A variable name with a prefix "t." designates the active treated observation to allow
 for operations between treated and non-treated variables. This option is {hi:not} supported by {hi:coarsened exact} matching.{break}
 {hi:Example 1:} exp(abs(empl-t.empl) < 20 | min(empl,t.empl)/max(empl,t.empl) >= 0.8){break}
 {hi:Example 2:} exp(region != t.region){p_end}
+
 {synopt:{opth l:imit(string)}}defines a list of variable and rank difference pairs. The rank difference can be omitted for a default value of 5. For
 each value of one of these variables, a rank percentile will be defined. The absolute rank difference between a treated and a potentially matched
 observation has to be lower or equal the specified difference or, if it is omitted, the default value of 5. A rank percentile is defined for the range
@@ -132,11 +148,14 @@ the treated and the control group. In case of copied counterfactuals (see option
 the standard errors are clustered accordingly. The option {cmd:unmatched} additionally reports the t-tests before the matching. A separate star 
 character in {it:varlist} is a shortcut to the matching variables ({it:varlist} of {cmd:ultimatch}). Additional variables, not used for matching, can be
 included, i.e., {cmd:report(score * fitness)} to additionally report score and fitness.{p_end}
+
 {synopt:{opt unm:atched)}}adds the comparison of the treated with the control group before matching to the report of the weighted t-tests after matching.
 It uses the variables specified in {cmd:report}. If option {cmd:report} is omitted, all matching variables ({it:varlist} of {cmd:ultimatch}) are
 reported, which is equivalent to {cmd:report(*)}.{p_end}
+
 {synopt:{opt mat:ched)}}reports of the weighted t-tests after matching. If option {cmd:report} is specified, this option is redundant.
 If option {cmd:report} is omitted, all matching variables ({it:varlist} of {cmd:ultimatch}) are reported, which is equivalent to {cmd:report(*)}.{p_end}
+
 {synopt:{opth uni:t(varlist)}}defines key variables determining a data unit. These units will be used to estimate clustered standard errors for the
 report. If omitted, every observation is considered a unit. {cmd:unit} is useful for panel data, where a unit can be matched in different time
 periods.{p_end}
@@ -155,23 +174,28 @@ of the closest treated observation is used for the counterfactuals. For {hi:coar
 containing treated and non-treated observations. Usually there are no gaps in the enumeration of the identifier. Still, they can occur if the option
 {help ultimatch##general:greedy} is used, especially in conjunction with {help ultimatch##restrictions:caliper}.{break}
 {hi:_match} is missing for non-matched observations.{p_end}
+
 {synopt:{opt _distance}}contains the distance of a counterfactual to the closest treated observation. For treated observations, {hi:_distance} maximizes 
 the distance to all associated counterfactuals. This allows to observe the quality of a match even when the _match identifiers of the counterfactuals have
 been replaced by other, closer treated observations in case of not using the options {help ultimatch##general:greedy} or {help ultimatch##general:copy}.
 {break}{hi:_distance} is missing for non-matched observations. It will not be created for {hi:coarsened exact} matching.{p_end}
+
 {synopt:{opt _weight}}contains the weight of the observation after matching. The weights balance the distribution of the counterfactuals and
 the distribution of the treated. In general, the weight of a treated observation is 1, while the sum of the weights of its counterfactuals
 also total to 1. If the option {help ultimatch##general:copy} is not specified, overlapping counterfactuals accumulate their weights. These weights
 can be used for subsequent estimations. These weights can be considered probability weights ({hi:pweight}). If options require copying treated
 observations, the weight balance stays maintained (see {help ultimatch##general:copy full}).{break}
 {hi:_weight} is missing for non-matched observations.{p_end}
+
 {synopt:{opt _copy}}contains a dummy designating observations that were copied (appended to the data) to avoid conflicts between treated observations
 over a mutual counterfactual. It will be created when the option {help ultimatch##general:copy} is specified, which usually affects only counterfactuals.
 If sub-option {help ultimatch##general:full} is specified, treated observations will also be copied.{break}
 {hi:_copy} is missing for non-matched observations, 1 for matched and appended and 0 for matched, original observations.{p_end}
+
 {synopt:{opt _support}}marks observations with common support. It will be created when option {help ultimatch##general:support} is specified.{break}
 {hi:_support} has the value 1 for observations with common support and 0 for observations without support. Only observations with common support will be
 matched.{p_end}
+
 {synopt:{opt _length}}will be created in case of {hi:cosine} distance matching. The {help varlist} will be interpreted as vector and normalized to length 1.
 The variable {cmd:_length} contains the length of the original data vector. Multiplying the variables of {help varlist} with {cmd:_length} will restore them.
 {p_end}
@@ -265,8 +289,9 @@ accordingly. The {help ultimatch##reporting:unmatched} standard errors are only 
 {synoptset 24 tabbed}{...}
 {syntab:Scalars}
 {synopt:{cmd:r(comp)}}number of search steps to allocate counterfactuals to evaluate {help ultimatch##leeway:hypersphere leeway} performance.{p_end}
-{synopt:{cmd:r(perc)}}percentile caliper value, if {help ultimatch##restrictions:perc} option was specified{p_end}
-{synopt:{cmd:r(ptile)}}specified percentile of the {help ultimatch##restrictions:perc} option{p_end}
+{synopt:{cmd:r(caliper)}}specified {help ultimatch##restrictions:caliper}{p_end}
+{synopt:{cmd:r(pcal)}}percentile caliper value, if {help ultimatch##restrictions:perc} option was specified{p_end}
+{synopt:{cmd:r(perc)}}specified percentile of the {help ultimatch##restrictions:perc} option{p_end}
 
 {syntab:Macros}
 {synopt:{cmd:r(matching)}}matching header describing major settings of the {help ultimatch} call{p_end}

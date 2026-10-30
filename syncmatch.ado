@@ -1,10 +1,12 @@
-// 2028.09.03 \\
+// 2026.10.30 \\
 cap program drop syncmatch
 program define syncmatch, rclass
-	syntax [varlist(default=none)] [in] [if], Time(varname) Start(string) UNIt(varname) [Treated(varname)] [Exact(varlist)] [LAG(string)] [EVEnt(varlist)] [EXP(string)] *
+	syntax [varlist(default=none)] [in] [if], Time(varname) Start(string) UNIt(varname) [Treated(varname)] [Exact(varlist)] [LAG(string)] [EVEnt(varlist)] [EXP(string)] [NYT] *
 	tempfile matched hood
-	tempvar use match valid _start _treated tmp maxtime mintime pretrend pretreat 
-	tempname comp perc ptile match vantage meridian
+	tempvar use match valid _start _treated control tmp maxtime mintime pretrend pretreat 
+	tempname comp caliper perc pcal match vantage meridian
+
+	// checking parameters
 	cap which ultimatch
 	if _rc != 0 {
 		di as error "ultimatch required"
@@ -48,7 +50,7 @@ program define syncmatch, rclass
 		di as error "options event and exp are mutually exclusive"
 		error 999
 	}
-	foreach v in _match _weight _distance _hood {
+	foreach v in _match _weight _distance _hood _treated {
 		cap confirm var `v'
 		if _rc == 0 {
 			di as error "variable `v' is already defined"
@@ -73,6 +75,14 @@ program define syncmatch, rclass
 			error 999
 		}
 	}
+	if "`nyt'" != "" & "`single'" != "" {
+		di as error "not-yet-treated (nyt) and constant event start are mutually exclusive"
+		error 999
+	}
+
+	// prepare selection (varlist & exact variables are required)
+	// define treated observation according to parameters: start, treated
+	// define potential control observations incl. nyt if applicable
 	local type_start : type `start'
 	local type_time : type `time'
 	sort `unit' `time'
@@ -90,6 +100,16 @@ program define syncmatch, rclass
 	qui gen byte `match' = `use'
 	local vars = subinstr(trim(itrim(`"`varlist' `exact'"')), " ", ",", .)
 	qui replace `match' = 0 if missing(`vars')
+	if "`nyt'" != "" {
+		qui gen byte `control' = `time' < `start' if `use' == 1
+	}
+	else {
+		qui gen byte `control' = `_treated' == 0 if `use' == 1
+	}
+
+	// preemptive event variables
+	// determining max and min observable period of event variables
+	// excluding matches without observable events in pretrend and treated periods
 	if "`event'" != "" {
 		local var = "`maxtime'"
 		foreach v of varlist `event' {
@@ -98,7 +118,7 @@ program define syncmatch, rclass
 				local var = "`tmp'"
 			}
 			else {
-				qui replace `maxtime' = `tmp' if `maxtime' != . & (`tmp' == . | `tmp' < `maxtime')
+				qui replace `maxtime' = `tmp' if `use' == 1 & `maxtime' != . & (`tmp' == . | `tmp' < `maxtime')
 				drop `tmp'
 			}
 		}
@@ -109,7 +129,7 @@ program define syncmatch, rclass
 				local var = "`tmp'"
 			}
 			else {
-				qui replace `mintime' = `tmp' if `mintime' != . & `tmp' > `mintime'
+				qui replace `mintime' = `tmp' if `use' == 1 & `mintime' != . & `tmp' > `mintime'
 				drop `tmp'
 			}
 		}
@@ -145,6 +165,15 @@ program define syncmatch, rclass
 		}
 		else {
 			qui replace `match' = 0 if `match' == 1 & `_treated' == 1 & (`maxtime' < `_start' | `mintime' >= `_start' | `pretrend' < 2 | `pretrend' == .)
+			// adjusting maxtime to not-yet-treated phase
+			if "`nyt'" != "" {
+				foreach v of varlist `event' {
+					qui egen `type_time' `tmp' = max(`time'/(`v' != . & `control' == 1)) if `use' == 1 & `_treated' == 1, by(`unit')
+					qui replace `maxtime' = `tmp' if `use' == 1 & `_treated' == 1 & `maxtime' != . & (`tmp' == . | `tmp' < `maxtime')
+					drop `tmp'
+				}
+				qui replace `match' = 0 if `match' == 1 & `maxtime' == .
+			}
 			if `"`exp'"' != "" {
 				local exp = `"exp((`maxtime' >= t.`_start' & `mintime' < t.`time') & (`exp'))"'
 			}
@@ -153,7 +182,14 @@ program define syncmatch, rclass
 			}
 		}
 	}
-	preserve
+
+	// determining matching observation before treatment
+	cap preserve // new stata versions should support nested preserve calls
+	if _rc != 0 {
+		di as error "warning: preserve is canceled"
+		qui restore, not
+		preserve
+	}
 	qui drop if `match' != 1 
 	if `near' == . {
 		qui gen byte `pretreat' = (`time'-`_start') < 0 & (`time'[_n+1]-`_start') >= 0 if `_treated' == 1 & `unit' == `unit'[_n+1]
@@ -164,17 +200,26 @@ program define syncmatch, rclass
 	if `far' != . {
 		qui replace `pretreat' = 0 if `pretreat' == 1 & (`time'-`_start') < `far'
 	}
-	qui keep if `pretreat' == 1 | `_treated' == 0
-	ultimatch `varlist', treated(`_treated') exact(`time' `exact') `exp' copy `options' 
+	qui replace `pretreat' = 0 if `pretreat' == .
+	qui keep if `pretreat' == 1 | `control' == 1
+	
+	// ULTIMATCH
+	ultimatch `varlist', treated(`pretreat') exact(`time' `exact') `exp' copy `options' 
+	
+	// transferring stored results
 	scalar `comp' = r(comp)
+	scalar `caliper' = r(caliper)
 	scalar `perc' = r(perc)
-	scalar `ptile' = r(ptile)
+	scalar `pcal' = r(pcal)
 	local matching = r(matching)
 	matrix `match' = r(match)
 	matrix `vantage' = r(vantage)
 	matrix `meridian' = r(meridian)
+	
+	// preparing matches & hood
 	qui keep if _match != .
-	keep `unit' _match _weight _distance `time'
+	qui gen byte _treated = `pretreat'
+	keep `unit' _match _weight _distance _treated `time'
 	sort `unit'
 	qui save `matched'
 	keep _match `time'
@@ -182,24 +227,34 @@ program define syncmatch, rclass
 	qui drop if _match == _match[_n-1]
 	qui save `hood'
 	restore
+	
+	// joining matches with panel
+	// merging matching period (hood)
 	joinby `unit' using `matched'
 	cap drop _merge
 	qui merge n:1 _match `time' using `hood', keep(master match)
 	label values _merge
 	qui recode _merge 3=2 1=0
 	rename _merge _hood
+	label var _treated "matched treated unit"
 	label var _hood "matched observations"
-	qui replace _hood = 1 if _hood == 2 & `_treated' == 1
-	qui label define _hood 1 "treated" 2 "counterfactual" 0 "panel", replace
+	qui replace _hood = 1 if _hood == 2 & _treated == 1
+	qui replace _hood = 3 if _hood == 2 &  `_treated' == 1
+	qui label define _hood 1 "treated" 2 "counterfactual" 3 "not-yet-treated" 0 "panel", replace
 	label val _hood _hood
+	qui label define _treated 0 "counterfactual" 1 "treated"
+	label val _treated _treated
 	if `comp' != . {
 		return scalar comp = `comp'
+	}
+	if `caliper' != . {
+		return scalar caliper = `caliper'
 	}
 	if `perc' != . {
 		return scalar perc = `perc'
 	}
-	if `ptile' != . {
-		return scalar ptile = `ptile'
+	if `pcal' != . {
+		return scalar pcal = `pcal'
 	}
 	return local matching = `"`matching'"'
 	if `match'[1,1] != . {
