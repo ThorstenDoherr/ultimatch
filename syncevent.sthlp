@@ -1,5 +1,5 @@
 {smcl}
-{* 30oct2026}{...}
+{* 03nov2026}{...}
 {hline}
 help for {hi:syncevent}
 {hline}
@@ -14,9 +14,9 @@ Intended to be used with {help syncmatch}{p_end}
 {title:Syntax}
 
 {p 8 15 2}{cmd:syncevent} {depvar} [{it:if}] [{it:in}], {opth ti:me(varname)} {opt s:tart(varname|#)} {opth u:nit(varname)} 
-[{opth m:atch(varname)}] [{opth tr:eated(varname)}]{break}[{opt w:indow(# [#] [#])}] [{opt mod:el(dummy|within|poisson)}] 
-[{opt nyt(ignore|exclude|replace)}] [{opt cfac}] [{opt prec:ision}] [{opth vce(vcetype)}] [{opt fe(cohort|match)}]
-[{opt noc:ohort}] [{opt l:evel(#)}]{p_end}
+[{opth m:atch(varname)}] [{opth tr:eated(varname)}]{break}[{opt w:indow(# [#] [#])}] [{opt mod:el(dummy|within|poisson)}] [{opt fe(cohort|match)}]
+[{opt a:djustment(event|cohort|none)}] [{opt tw:fe}] [{opt nyt(ignore|exclude|replace)}] [{opt cfac}] [{opth vce(vcetype)}] [{opt noc:ohort}]
+[{opt l:evel(#)}]{p_end}
 
 {marker opt_summary}{...}
 {synoptset 22 tabbed}{...}
@@ -35,6 +35,14 @@ concurrent treatment ({cmd:start} is a number) or when the start variable is non
 not-yet-treated observations (see {help syncmatch} option: {help syncmatch##matching:nyt}). If not specified but required, the system
 variable {help syncmatch##system_vars:_treated} will be used by default.{p_end}
 
+{synopt :{opt w:indow(# [#] [#])}}specifies the leads (test for pretrents), the omitted pre-treatmemt period (default t-1) and the lags, for example:{p_end}
+{synopt :}{cmd:window(. -1 .)} {hline 1} all available leads and lags, omitt first non-treated period (-1) before treatment (default){p_end}
+{synopt :}{cmd:window(-5 -1 5)} {hline 1} report 5 leading and 5 lagging periods, omitt period -1 as baseline{p_end}
+{synopt :}{cmd:window(-5 5)} {hline 1} same as above{p_end}
+{synopt :}{cmd:window(-7 .)} {hline 1} report 7 leading periods and all availabe treatment periods, skipping -1{p_end}
+{synopt :}{cmd:window(-7)} {hline 1} same as above{p_end}
+{synopt :}{cmd:window(-7 -2 .)} {hline 1} same as above but omitts t-2{p_end}
+
 {marker matching}{...}
 {syntab:Matching}
 {synopt :{opth u:nit(varname)}}defines the entities within the panel. It may not be unique due to matching with replacement. An entity can be drawn 
@@ -46,11 +54,6 @@ observations of a treated entity and the panel observations of its matched count
 
 {marker model}{...}
 {syntab:Model}
-{synopt :{opt prec:ision}}takes the variation of the treated in an unbalanced panel into account for the weighted linear combination of the treatement 
-effects. A time preriod with a low representation of treated has a lower weight than another period with better representation for the same cohort. 
-Without this option, weights are defined by the maximum number of treated of a cohort irrespective of panel variation (default). A high deviation of 
-the collective coefficients between these settings indicates a cohort specific representation bias.{p_end}
-
 {synopt :{opt mod:el(...)}}specifies the fixed-effects model (keywords can be abbreviated):{p_end}
 {synopt :}{cmd:dummy} {hline 1} dummy regression. It supports weight variation within an entity and therefore unbalanced panel adjustments
 (see {help areg}).{p_end}
@@ -63,6 +66,13 @@ module {help ppmlhdfe}.{p_end}
 {synopt :}{cmd:cohort} {hline 1} fixed-effects are based on {help syncevent##matching:unit} and {cmd:cohort} assigning only one FE to a unit even when
 matched multiple times in a cohort. This is the default setting.{p_end}
 {synopt :}{cmd:match} {hline 1} absorbs fixed-effects based on every combination of {help syncevent##matching:unit} and {help syncevent##matching:match}.
+
+{synopt :{opt a:djustment(...)}}determines how the linear combinations ({help lincom}) of the cohort-specific treatment coefficients are weighted
+(keywords can be abbreviated):{p_end}
+{synopt :}{cmd:event} {hline 1} considers the variation of treated by cohort over time, i.e. in unbalanced panels (default){p_end}
+{synopt :}{cmd:cohort} {hline 1} uses the maximum number of treated per cohort imposing population representation{p_end}
+{synopt :}{cmd:none} {hline 1} assigns every coefficient the same weight{p_end}
+{synopt :}In case of {help syncevent##model:twfe}: {cmd:event} weights have no cohort dimension and {cmd:cohort} is not supported.{p_end}
 
 {synopt :{opt tw:fe}}performs a two-way fixed effects regression instead of using a cohort-sensitive fixed effect model. All cohorts are lumped together
 irrespective of cohort-specific selection bias, which is mitigated by absolute time dummies. Can be used for demonstration purposes or to gauge the extend
@@ -95,17 +105,9 @@ For more information see {help syncevent##nyt:here}.{p_end}
 
 {marker reporting}{...}
 {syntab:Reporting}
-{synopt :{opt l:evel(#)}}set confidence level; default is {cmd:level(95)}{p_end}
-
 {synopt :{opt noc:ohort}}suppresses the output of the cohort estimation{p_end}
 
-{synopt :{opt w:indow(# [#] [#])}}specifies the leads (test for pretrents), the omitted pre-treatmemt period (default t-1) and the lags, for example:{p_end}
-{synopt :}{cmd:window(. -1 .)} {hline 1} all available leads and lags, omitt first non-treated period (-1) before treatment (default){p_end}
-{synopt :}{cmd:window(-5 -1 5)} {hline 1} report 5 leading and 5 lagging periods, omitt period -1 as baseline{p_end}
-{synopt :}{cmd:window(-5 5)} {hline 1} same as above{p_end}
-{synopt :}{cmd:window(-7 .)} {hline 1} report 7 leading periods and all availabe treatment periods, skipping -1{p_end}
-{synopt :}{cmd:window(-7)} {hline 1} same as above{p_end}
-{synopt :}{cmd:window(-7 -2 .)} {hline 1} same as above but omitts t-2{p_end}
+{synopt :{opt l:evel(#)}}set confidence level; default is {cmd:level(95)}{p_end}
 {synoptline}
 
 {marker description}{...}
@@ -134,8 +136,7 @@ by the absolute time reference and the fixed effects. By interacting the relativ
 dummies capture the isolated effect for every cohort within one regression. The relative treatment time dummies cover a time window ranging from placebo
 periods to observe pre-treatment trends to a specified treatment time span, e.g., over 5 pre-treatment periods to 7 periods into treatment. The collective
 treatment effects for every period in that window is the weighted average of the corresponding cohort specific coefficients. The weights are proportional to
-the frequencies of treated entities in the cohorts. Precision weights can be applied to account for different representations of treated in an unbalanced
-panel by adjusting for the representation of treated in every relative time period.{p_end}
+the frequencies of treated entities in the cohorts according to the {help syncevent##model:adjustment} setting.{p_end}
 
 {marker balancing}{...}
 {title:Balancing}

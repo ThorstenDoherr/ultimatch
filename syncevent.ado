@@ -1,7 +1,7 @@
-// 2026.10.30 \\
+// 2026.11.03 \\
 cap program drop syncevent
 program define syncevent, rclass
-	syntax varlist(min=1 max=1) [if] [in], TIme(varname) Start(string) Unit(varname) [Match(varname)] [TReated(varname)] [Window(string)] [MODel(string)] [Level(real 95)] [CFAC] [PRECision] [NOCohort] [TWfe] [NYT(string)] [VCE(string)] [FE(string)]
+	syntax varlist(min=1 max=1) [if] [in], TIme(varname) Start(string) Unit(varname) [Match(varname)] [TReated(varname)] [Window(string)] [MODel(string)] [Level(real 95)] [CFAC] [NOCohort] [TWfe] [NYT(string)] [VCE(string)] [FE(string)] [Adjustment(string)]
 	tokenize `"`varlist'"'
 	tempvar nouse _treated tmp1 first cohort event wc wt bweight from reserve with swap id
 	tempname hood replace job C E T W R G sum msum psum
@@ -176,6 +176,28 @@ program define syncevent, rclass
 			di as error "match declares more unit fixed-effects per match"
 			error 999
 		}
+	}
+	local adjustment = trim(`"`adjustment'"')
+	local adjustment = cond(`"`adjustment'"' == "", "event", `"`adjustment'"')
+	if `"`adjustment'"' != "" {
+		foreach v in cohort event none {
+			if substr("`v'",1,length(`"`adjustment'"')) == `"`adjustment'"' {
+				local adjustment = "`v'"
+				continue, break
+			}
+		}
+		if inlist(`"`adjustment'"', "cohort", "event", "none") == 0 {
+			di as error "adjustment defines how the collective coefficients are proportionally composed"
+			di as error "adjustment supports following keywords: cohort, event, none"
+			di as error "event considers the variation of treated by cohort over time (default)"
+			di as error "cohort uses the maximum number of treated per cohort"
+			di as error "none assigns every coefficient the same weight"
+			error 999
+		}
+	}
+	if "`twfe'" != "" & "`adjustment'" == "cohort" {
+		di as error "twfe model does not support cohort adjusted lincom weights"
+		error 999
 	}
 	local y = "`1'"
 	
@@ -411,7 +433,6 @@ program define syncevent, rclass
 			qui gen byte t_`mp'`ev' = c_`mp'`ev' * `_treated'
 			local tvar = "`tvar'" + " t_`mp'`ev'"
 		}
-		local nocohort = ""
 		local absolute = ""
 		if `max_C' > 1 {
 			qui tab `time', matrow(`T')
@@ -513,99 +534,166 @@ program define syncevent, rclass
 		}
 		`reg', level(`level')
 	}
-	
-	// stop if twfe
-	if "`twfe'" != "" {
-		exit
-	}
 
-	// determining cohort weights based on treated observations
-	matrix  `W' = J(`max_C',`max_E',0)
-	forvalue c = 1/`max_C' {
-		forvalue e = 1/`max_E' {
-			if `E'[`e',1] == `skip' {
-				continue
-			}
-			qui sum `bweight' if `cohort' == `C'[`c',1] & `event' == `E'[`e',1] & `_treated'
-			matrix `W'[`c',`e'] = r(sum)
-		}
-	}
-	if "`precision'" == "" {
-		mata: syncevent_cohort("`W'")
-	}
-
-	// linear combinations
+	// output matrix definition
 	local cols = "estimate se `t' p lb ub level"
 	local rows = ""
 	matrix `R' = J(`max_E'+1, wordcount("`cols'"), 0)
 	matrix colnames `R' = `cols'
-	local i = 0
-	forvalue e = 1/`max_E' {
-		if `E'[`e',1] == `skip' {
-			continue
-		}
-		local mp = cond(`E'[`e',1] < 0, "m", "p")
-		local ev = abs(`E'[`e',1])
-		local lc = ""
-		scalar `sum' = 0
-		forvalue c = 1/`max_C' {
-			local co = `C'[`c',1]
-			local coef = "t`co'_`mp'`ev'"
-			if colnumb(e(b), "`coef'") != . & colnumb(e(b), "o.`coef'") == . {
-				local lc = `"`lc' + `W'[`c',`e'] * t`co'_`mp'`ev'"'
-				scalar `sum' = `sum' + `W'[`c',`e']
+	
+	// linear combinations
+	if "`twfe'" != "" {
+		// determining event weights based on treated observations
+		matrix  `W' = J(1,`max_E',1)
+		local adjusted = "{res:not}"
+		if "`adjustment'" != "none" {
+			local adjusted = "{res:event}"
+			forvalue e = 1/`max_E' {
+				if `E'[`e',1] == `skip' {
+					continue
+				}
+				qui sum `bweight' if `event' == `E'[`e',1] & `_treated' == 1
+				matrix `W'[1,`e'] = r(sum)
 			}
 		}
-		local lc = substr(`"`lc'"',4,.)
-		local rows = "`rows'  t_`mp'`ev'"
-		if "`lc'" != "" & `sum' > 0 {
-			qui lincom (`lc')/`sum', level(`level')
-		}
-		else {
-			mata: st_rclear()
-		}
-		local i = `i'+1
-		local j = 0
-		foreach r in `cols' {
-			local j = `j'+1
-			matrix `R'[`i',`j'] = r(`r')
-		}
-	}
-	local rows = trim("`rows'")
 
-	// linear combinations global
-	local mlc = ""
-	local plc = ""
-	scalar `msum' = 0
-	scalar `psum' = 0
-	forvalue e = 1/`max_E' {
-		if `E'[`e',1] == `skip' {
-			continue
-		}
-		local mp = cond(`E'[`e',1] < 0, "m", "p")
-		local ev = abs(`E'[`e',1])
-		forvalue c = 1/`max_C' {
-			local co = `C'[`c',1]
-			local coef = "t`co'_`mp'`ev'"
+		// harmonizing results via lincom
+		local mlc = ""
+		local plc = ""
+		scalar `msum' = 0
+		scalar `psum' = 0
+		local i = 0
+		forvalue e = 1/`max_E' {
+			if `E'[`e',1] == `skip' {
+				continue
+			}
+			local mp = cond(`E'[`e',1] < 0, "m", "p")
+			local ev = abs(`E'[`e',1])
+			local coef = "t_`mp'`ev'"
+			local rows = "`rows'  `coef'"				
 			if colnumb(e(b), "`coef'") != . & colnumb(e(b), "o.`coef'") == . {
-				local `mp'lc = `"``mp'lc' + `W'[`c',`e'] * t`co'_`mp'`ev'"'
-				scalar ``mp'sum' = ``mp'sum' + `W'[`c',`e']
+				local `mp'lc = `"``mp'lc' + `W'[1,`e'] * `coef'"'
+				scalar ``mp'sum' = ``mp'sum' + `W'[1,`e']
+				qui lincom `coef', level(`level')
+			}
+			else {
+				mata: st_rclear()
+			}
+			local i = `i'+1
+			local j = 0
+			foreach r in `cols' {
+				local j = `j'+1
+				matrix `R'[`i',`j'] = r(`r')
+			}
+		}
+		
+		// linear combinations global
+		foreach mp in m p {
+			local `mp'lc = substr(`"``mp'lc'"', 4, .)
+			if "``mp'lc'" != "" & ``mp'sum' > 0 {
+				qui lincom (``mp'lc')/``mp'sum', level(`level')
+			}
+			else {
+				mata: st_rclear()
+			}
+			local i = `i'+1
+			local j = 0
+			foreach r in `cols' {
+				local j = `j'+1
+				matrix `R'[`i',`j'] = r(`r')
 			}
 		}
 	}
-	foreach mp in m p {
-		local `mp'lc = substr(`"``mp'lc'"',4,.)
-		if "``mp'lc'" != "" & ``mp'sum' > 0 {
-			qui lincom (``mp'lc')/``mp'sum', level(`level')
+	else {
+		// determining cohort x event weights based on treated observations
+		matrix  `W' = J(`max_C',`max_E',1)
+		local adjusted = "{res:not}"
+		if "`adjustment'" != "none" {
+			local adjusted = "{res:cohort} x {res:event}"
+			forvalue c = 1/`max_C' {
+				forvalue e = 1/`max_E' {
+					if `E'[`e',1] == `skip' {
+						continue
+					}
+					qui sum `bweight' if `cohort' == `C'[`c',1] & `event' == `E'[`e',1] & `_treated' == 1
+					matrix `W'[`c',`e'] = r(sum)
+				}
+			}
+			if "`adjustment'" == "cohort" {
+				local adjusted = "{res:cohort}"
+				mata: syncevent_cohort("`W'")
+			}
 		}
-		else {
-			mata: st_rclear()
+
+		// linear combinations
+		local i = 0
+		forvalue e = 1/`max_E' {
+			if `E'[`e',1] == `skip' {
+				continue
+			}
+			local mp = cond(`E'[`e',1] < 0, "m", "p")
+			local ev = abs(`E'[`e',1])
+			local lc = ""
+			scalar `sum' = 0
+			forvalue c = 1/`max_C' {
+				local co = `C'[`c',1]
+				local coef = "t`co'_`mp'`ev'"
+				if colnumb(e(b), "`coef'") != . & colnumb(e(b), "o.`coef'") == . {
+					local lc = `"`lc' + `W'[`c',`e'] * t`co'_`mp'`ev'"'
+					scalar `sum' = `sum' + `W'[`c',`e']
+				}
+			}
+			local lc = substr(`"`lc'"',4,.)
+			local rows = "`rows'  t_`mp'`ev'"
+			if "`lc'" != "" & `sum' > 0 {
+				qui lincom (`lc')/`sum', level(`level')
+			}
+			else {
+				mata: st_rclear()
+			}
+			local i = `i'+1
+			local j = 0
+			foreach r in `cols' {
+				local j = `j'+1
+				matrix `R'[`i',`j'] = r(`r')
+			}
 		}
-		local i = `i'+1
-		local j = 0
-		foreach r in `cols' {
-			local j = `j'+1
-			matrix `R'[`i',`j'] = r(`r')
+		local rows = trim("`rows'")
+
+		// linear combinations global
+		local mlc = ""
+		local plc = ""
+		scalar `msum' = 0
+		scalar `psum' = 0
+		forvalue e = 1/`max_E' {
+			if `E'[`e',1] == `skip' {
+				continue
+			}
+			local mp = cond(`E'[`e',1] < 0, "m", "p")
+			local ev = abs(`E'[`e',1])
+			forvalue c = 1/`max_C' {
+				local co = `C'[`c',1]
+				local coef = "t`co'_`mp'`ev'"
+				if colnumb(e(b), "`coef'") != . & colnumb(e(b), "o.`coef'") == . {
+					local `mp'lc = `"``mp'lc' + `W'[`c',`e'] * t`co'_`mp'`ev'"'
+					scalar ``mp'sum' = ``mp'sum' + `W'[`c',`e']
+				}
+			}
+		}
+		foreach mp in m p {
+			local `mp'lc = substr(`"``mp'lc'"',4,.)
+			if "``mp'lc'" != "" & ``mp'sum' > 0 {
+				qui lincom (``mp'lc')/``mp'sum', level(`level')
+			}
+			else {
+				mata: st_rclear()
+			}
+			local i = `i'+1
+			local j = 0
+			foreach r in `cols' {
+				local j = `j'+1
+				matrix `R'[`i',`j'] = r(`r')
+			}
 		}
 	}
 	local rows = "`rows' minus plus"
@@ -740,7 +828,10 @@ program define syncevent, rclass
 		di as text "{ralign `len': `=abbrev(e(absvars),12)' }{c |} " as result %12.0f e(df_a_nested) "  " %12.0f e(df_a_redundant) " " %12.0f e(df_a)
 	}
 	di as text "{hline `len'}{c BT}{hline 64}"
-	di as text "Variable {res:`cunit'} represents `fe' units of {res:`unit'}"
+	local l1 = 41-length(" is `fe' unit")
+	local val1 = abbrev("`cunit'",`l1')
+	local l2 = 78-length("`val1' is `fe' unit")
+	di as text "{res:`val1'} is {res:`fe'} unit{ralign `l2':lincom is `adjusted' adjusted}"
 	return matrix collective = `R'
 end
 

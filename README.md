@@ -10,11 +10,15 @@ STATA
 
 ## Getting started
 * Copy all \*.ado and \*.sthlp files into your ADO file directory (typically c:\ado).
-* Call the respective help file within STATA.
-* Copy the provided examples from the help document into do-files and run them.
+* Call the respective help files within STATA.
+* Copy the provided examples from the respective help document into do-files and run them.
 * Adjust the templates in the examples to your needs until you you get the hang of it.
 
 ## Version history
+2026.11.03
+* **syncevent** reports global linear combinations and stored results for two-way fixed-effects (**twfe**) model
+* **syncevent** has flexible settings for linear combination weights with the **adjustment** option
+
 2026.10.30
 * **syncmatch** supports not-yet-treated counterfactual matching with the **nyt** option
 * **syncevent** always balances counterfactuals ignoring external weights
