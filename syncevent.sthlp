@@ -138,6 +138,11 @@ periods to observe pre-treatment trends to a specified treatment time span, e.g.
 treatment effects for every period in that window is the weighted average of the corresponding cohort specific coefficients. The weights are proportional to
 the frequencies of treated entities in the cohorts according to the {help syncevent##model:adjustment} setting.{p_end}
 
+{pstd}This approach follows the proposition off {cmd:Sun and Abraham} (2020) in regard of the cohort interaction of relative time dummies but replaces the 
+weighting scheme with matched cohorts. The auxilliary regression to determine the weights to convey the cohort structure of the treated onto the population
+is replaced by attaching a similarily structured counterfactual to every treated unit synchronized at a cohort specific pre-treatment time period creating
+separate tangible control groups for every treated cohort.{p_end}
+
 {marker balancing}{...}
 {title:Balancing}
 
